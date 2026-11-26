@@ -94,12 +94,12 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
       navigator.vibrate?.(200)
     }
     if (prev > 0 && mins <= 0) notif('Se cerró el reporte de hoy', config.politica === 'bloquear' ? 'Si te falta algo, pide habilitación.' : 'Lo que reportes ahora queda extemporáneo.')
-    else if (config.avisos.some(a => prev > a && mins <= a && mins > 0)) notif(`Faltan ${durTxt(mins)} para el cierre`, `Reporta los gastos de hoy antes de las ${fhora(limite)}.`)
+    else if (config.avisos.some(a => prev > a && mins <= a && mins > 0)) notif(`Faltan ${durTxt(mins)} para el cierre`, `Reporta los gastos de hoy antes de las ${fhora(limite)}`)
   }, [mins, config, limite, toast])
 
   const plazo = limite && (mins > 0
     ? <div className={'dl ' + (mins <= 60 ? 'warn' : 'ok')}><span className="clk">{durTxt(mins)}</span><p>Reporta los gastos de hoy antes de las <b>{fhora(limite)}</b></p></div>
-    : <div className="dl bad"><span className="clk">Cerrado</span><p>El plazo de hoy cerró a las {fhora(limite)}.{' '}
+    : <div className="dl bad"><span className="clk">Cerrado</span><p>El plazo de hoy cerró a las {fhora(limite)}{' '}·{' '}
       {config!.politica === 'bloquear' && !habil ? 'Para reportar, pide habilitación al administrador.' : habil ? 'Estás habilitado hoy; quedará como extemporáneo.' : 'Lo que reportes ahora queda como extemporáneo.'}</p></div>)
 
   const novedades = reps.filter(r => r.estado === 'rechazado')

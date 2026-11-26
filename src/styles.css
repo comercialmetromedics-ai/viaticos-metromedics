@@ -189,3 +189,25 @@ tr.off td{opacity:.5}
   .stack td::before{content:attr(data-l);float:inline-start;width:7.5em;margin-inline-start:-8em;white-space:normal;color:var(--mute)}
   .stack td:empty{display:none}.bars .br{grid-template-columns:90px minmax(0,1fr) 90px}
 }
+
+/* ---------- ajustes para celular ---------- */
+.tabs button,.dl .clk,.cmp .v,.bell,.btn,.tag,.chip,.pbar-r>*,.abar-r>*{flex-shrink:0}
+.mat td:first-child,.mat th:first-child{position:sticky;left:0;background:var(--panel);z-index:1}
+@media(max-width:700px){
+  .tabs{flex-wrap:wrap;gap:2px 0;padding:4px 8px 0;position:static}
+  .tabs button{padding:8px 10px;min-height:40px;font-size:14px;border-bottom-width:2px}
+  .abar{padding:10px 14px}.abar .brand img{width:28px;height:28px}
+  .apane{padding:14px 12px 32px}
+  .tool>.inp{max-width:none}
+  .range{width:100%}.range label{flex:1 1 140px}.range .inp{width:100%}
+  .dl{align-items:flex-start}.dl .clk{font-size:16px;min-width:64px}
+  .cmp .v{font-size:16px}
+  .thumb,.none{width:84px;height:112px}
+  .rtop b{font-size:16px}.amt{font-size:18px}
+  .acts .btn{flex:1 1 auto}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .kpis b{font-size:18px;white-space:normal}
+  .grid2{grid-template-columns:minmax(0,1fr)}
+  .hgrid{grid-template-columns:minmax(0,1fr);padding:12px}
+  .opt.sp .inp.tm{width:140px}
+}
