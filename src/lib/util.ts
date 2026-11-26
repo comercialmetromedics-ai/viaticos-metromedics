@@ -59,3 +59,12 @@ export function descargarCSV(nombre: string, filas: (string | number | null)[][]
 /** Texto del resultado de una legalización (positivo: el técnico reintegró; negativo: la empresa reembolsó) */
 export const textoResultado = (r: number, pasado = true) =>
   r > 0 ? `${pasado ? 'Reintegró' : 'Reintegra'} ${fmt(r)}` : r < 0 ? `${pasado ? 'Reembolsado' : 'Reembolsar'} ${fmt(-r)}` : 'Cuadrado'
+
+/** Retención esperada a partir de lo pagado (neto). Factura ≈ pagado / (1 − %). aplica=false si la factura es menor a la base */
+export function retencionEsperada(k: { pide_retencion: boolean; retencion_pct: number | null; retencion_base: number | null }, pagado: number) {
+  if (!k.pide_retencion || !pagado) return { aplica: false, factura: pagado, valor: 0 }
+  const p = Number(k.retencion_pct || 0) / 100
+  const factura = p ? Math.round(pagado / (1 - p)) : pagado
+  if (k.retencion_base != null && factura < k.retencion_base) return { aplica: false, factura, valor: 0 }
+  return { aplica: true, factura, valor: Math.round(factura * p) }
+}

@@ -4,7 +4,8 @@ export interface Ciudad { id: number; nombre: string; orden: number; activo: boo
 export interface Concepto {
   id: string; nombre: string; unidad: string; subtipos: string[]
   requiere_descripcion: boolean; por_noche: boolean; activo: boolean; orden: number; tope_base: number | null
-  rut_modo: Modo; anexo_nombre: string | null; anexo_modo: Modo
+  rut_modo: Modo; anexo_nombre: string | null; anexo_modo: Modo; pide_retencion: boolean
+  retencion_pct: number | null; retencion_base: number | null
 }
 export type Modo = 'obligatorio' | 'opcional' | 'no'
 export interface Tope { concepto_id: string; ciudad_id: number; valor: number | null }
@@ -14,7 +15,8 @@ export type Estado = 'pendiente' | 'aprobado' | 'parcial' | 'rechazado'
 export interface Reporte {
   id: number; orden: string; tecnico: string; fecha_gasto: string; enviado_at: string
   concepto_id: string; subtipo: string | null; descripcion: string | null; noches: number; monto: number
-  factura_electronica: boolean; soporte_path: string; rut_path: string | null; anexo_path: string | null; observaciones: string | null
+  factura_electronica: boolean; soporte_path: string; rut_path: string | null; anexo_path: string | null; rut_pendiente: boolean; anexo_pendiente: boolean
+  retencion: boolean | null; retencion_valor: number | null; retencion_nota: string | null; observaciones: string | null
   estado: Estado; aprobado: number | null; motivo: string | null; reenvios: number; extemporaneo: boolean
   revisado_por: string | null; revisado_at: string | null; legalizacion_id: number | null
 }

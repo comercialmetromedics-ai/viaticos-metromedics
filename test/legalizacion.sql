@@ -35,7 +35,7 @@ set request.jwt.claim.sub='00000000-0000-0000-0000-00000000000a';
 select cambiar_responsable('4120-CAL-MMCS','00000000-0000-0000-0000-00000000000b',0,hoy_local(),'Junio');
 insert into consignaciones(orden,fecha,monto) values ('4120-CAL-MMCS',hoy_local(),200000);
 set request.jwt.claim.sub='00000000-0000-0000-0000-00000000000b';
-insert into reportes(orden,fecha_gasto,concepto_id,monto,factura_electronica,soporte_path) values ('4120-CAL-MMCS',hoy_local(),'hotel',150000,true,'00000000-0000-0000-0000-00000000000b/h.jpg');
+insert into reportes(orden,fecha_gasto,concepto_id,monto,factura_electronica,retencion,retencion_valor,soporte_path) values ('4120-CAL-MMCS',hoy_local(),'hotel',150000,true,true,5400,'00000000-0000-0000-0000-00000000000b/h.jpg');
 set request.jwt.claim.sub='00000000-0000-0000-0000-00000000000a';
 select decidir_reporte(id,'aprobar') from reportes where concepto_id='hotel';
 \echo '--- traspaso de 0 pendiente de Carlos: legalizar Carlos otra vez cierra el traspaso'

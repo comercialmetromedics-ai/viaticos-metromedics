@@ -14,7 +14,7 @@ export default function Ajustes() {
   const [nc, setNc] = useState('')
   const [modoNc, setModoNc] = useState<'base' | 'propio'>('base')
   const [tNc, setTNc] = useState<Record<string, string>>({})
-  const [nk, setNk] = useState({ nombre: '', unidad: 'por gasto', subtipos: '', desc: false, noche: false, rut: 'obligatorio', anx: 'no', anxN: '' })
+  const [nk, setNk] = useState({ nombre: '', unidad: 'por gasto', subtipos: '', desc: false, noche: false, rut: 'obligatorio', anx: 'no', anxN: '', ret: false })
   const [err, setErr] = useState('')
   const [ver, setVer] = useState(0)
   const hoy = ymd()
@@ -71,9 +71,9 @@ export default function Ajustes() {
     if (!nk.nombre.trim()) return setErr('Escribe el nombre del concepto.')
     const id = nk.nombre.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
     const { error } = await sb.from('conceptos').insert({ id, nombre: nk.nombre.trim(), unidad: nk.unidad, subtipos: nk.subtipos.split(',').map(s => s.trim()).filter(Boolean),
-      requiere_descripcion: nk.desc, por_noche: nk.noche, rut_modo: nk.rut, anexo_modo: nk.anx, anexo_nombre: nk.anx !== 'no' ? nk.anxN.trim() || null : null, orden: 50 })
+      requiere_descripcion: nk.desc, por_noche: nk.noche, rut_modo: nk.rut, anexo_modo: nk.anx, anexo_nombre: nk.anx !== 'no' ? nk.anxN.trim() || null : null, pide_retencion: nk.ret, orden: 50 })
     if (error) return setErr(msgError(error))
-    setNk({ nombre: '', unidad: 'por gasto', subtipos: '', desc: false, noche: false, rut: 'obligatorio', anx: 'no', anxN: '' }); setErr(''); await recargar(['conceptos']); toast('Concepto agregado a la lista del técnico')
+    setNk({ nombre: '', unidad: 'por gasto', subtipos: '', desc: false, noche: false, rut: 'obligatorio', anx: 'no', anxN: '', ret: false }); setErr(''); await recargar(['conceptos']); toast('Concepto agregado a la lista del técnico')
   }
   async function toggle(tabla: 'conceptos' | 'ciudades', id: string | number, activo: boolean) {
     const { error } = await sb.from(tabla).update({ activo }).eq('id', id)
@@ -117,6 +117,13 @@ export default function Ajustes() {
             <label>Otro anexo <select value={k.anexo_modo} onChange={e => guardarK(k.id, { anexo_modo: e.target.value })}>{MODOS}</select></label>
             {k.anexo_modo !== 'no' && <input key={k.anexo_nombre} defaultValue={k.anexo_nombre || ''} placeholder="Nombre del anexo (ej. Tiquete)"
               onBlur={e => e.target.value.trim() !== (k.anexo_nombre || '') && guardarK(k.id, { anexo_nombre: e.target.value.trim() || null })} />}
+            <label><input type="checkbox" checked={k.pide_retencion} onChange={e => guardarK(k.id, { pide_retencion: e.target.checked })} />Confirmar retención</label>
+            {k.pide_retencion && <>
+              <label>% <input className="pct" inputMode="decimal" key={'p' + k.retencion_pct} defaultValue={k.retencion_pct != null ? String(k.retencion_pct).replace('.', ',') : ''} placeholder="Ej. 3,5"
+                onBlur={e => { const v = parseFloat(e.target.value.replace(',', '.')) || null; if (v !== (k.retencion_pct != null ? Number(k.retencion_pct) : null)) guardarK(k.id, { retencion_pct: v }) }} /></label>
+              <label>desde $ <input className="pct" inputMode="numeric" key={'b' + k.retencion_base} defaultValue={k.retencion_base != null ? miles(k.retencion_base) : ''} placeholder="Siempre"
+                onBlur={e => { const n = num(e.target.value) || null; e.target.value = n ? miles(n) : ''; if (n !== (k.retencion_base ?? null)) guardarK(k.id, { retencion_base: n }) }} /></label>
+            </>}
           </div></td>
         <td className="note">{k.unidad}</td>
         <td className="base"><input inputMode="numeric" defaultValue={k.tope_base != null ? miles(k.tope_base) : ''} placeholder="Sin tope" aria-label={`Tope base ${k.nombre}`}
@@ -150,6 +157,7 @@ export default function Ajustes() {
         <div className="anx">
           <label>RUT si no es FE <select value={nk.rut} onChange={e => setNk({ ...nk, rut: e.target.value })}>{MODOS}</select></label>
           <label>Otro anexo <select value={nk.anx} onChange={e => setNk({ ...nk, anx: e.target.value })}>{MODOS}</select></label>
+          <label><input type="checkbox" checked={nk.ret} onChange={e => setNk({ ...nk, ret: e.target.checked })} />Confirmar retención</label>
           {nk.anx !== 'no' && <input value={nk.anxN} onChange={e => setNk({ ...nk, anxN: e.target.value })} placeholder="Nombre del anexo (ej. Tiquete)" />}
         </div>
         <button className="btn pri" onClick={agregarConcepto}>Agregar concepto</button></div>

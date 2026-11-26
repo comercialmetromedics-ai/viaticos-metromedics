@@ -37,9 +37,10 @@ export function Aprobados({ tick }: { tick: number }) {
 
   function exportar() {
     descargarCSV(`viaticos-aprobados-${desde}-a-${hasta}.csv`, [
-      ['Código', 'Cliente', 'Orden', 'Ciudad', 'Técnico', 'Fecha gasto', 'Concepto', 'Detalle', 'Factura electrónica', 'Reportado', 'Aprobado', 'Extemporáneo'],
+      ['Código', 'Cliente', 'Orden', 'Ciudad', 'Técnico', 'Fecha gasto', 'Concepto', 'Detalle', 'Factura electrónica', 'Reportado', 'Aprobado', 'Extemporáneo', 'Retención practicada', 'Valor retenido', 'Motivo sin retención'],
       ...vis.map(r => { const o = app.orden(r.orden); return [codigo(r.id), o?.cliente || '', r.orden, app.ciudad(o?.ciudad_id), app.nombre(r.tecnico), r.fecha_gasto,
-        app.concepto(r.concepto_id)?.nombre || r.concepto_id, r.subtipo || r.descripcion || '', r.factura_electronica ? 'Sí' : 'No', r.monto, r.aprobado, r.extemporaneo ? 'Sí' : 'No'] })
+        app.concepto(r.concepto_id)?.nombre || r.concepto_id, r.subtipo || r.descripcion || '', r.factura_electronica ? 'Sí' : 'No', r.monto, r.aprobado, r.extemporaneo ? 'Sí' : 'No',
+        r.retencion == null ? '' : r.retencion ? 'Sí' : 'No', r.retencion_valor ?? '', r.retencion_nota || ''] })
     ])
   }
 

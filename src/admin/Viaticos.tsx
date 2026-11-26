@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useApp } from '../lib/store'
 import { msgError, sb } from '../lib/sb'
 import type { Consignacion, Saldo, Traspaso } from '../lib/types'
-import { disponible, fdate, fmt, miles, neto, num, textoResultado, ymd } from '../lib/util'
+import { codigo, disponible, fdate, fmt, miles, neto, num, textoResultado, ymd } from '../lib/util'
 import { subirSoporte } from '../lib/img'
 import { Cargando, Subir, Tag, Archivo } from '../ui'
 
@@ -15,7 +15,13 @@ const abierto = (s: Saldo) => s.consignado + s.traspaso_recibido + s.traspaso_en
 /** Cierre del ciclo de un técnico en una orden */
 function Legalizar({ s, onCerrar, onListo }: { s: Saldo; onCerrar: () => void; onListo: () => void }) {
   const app = useApp()
-  const res = neto(s) - s.aprobado
+  const [pend, setPend] = useState<{ id: number; aprobado: number | null; concepto_id: string; rut_pendiente: boolean }[]>([])
+  useEffect(() => {
+    sb.from('reportes').select('id, aprobado, concepto_id, rut_pendiente').eq('orden', s.orden).eq('tecnico', s.tecnico).is('legalizacion_id', null)
+      .neq('estado', 'rechazado').or('rut_pendiente.eq.true,anexo_pendiente.eq.true').then(r => setPend(r.data || []))
+  }, [s.orden, s.tecnico])
+  const aprob = s.aprobado - pend.reduce((a, p) => a + (p.aprobado || 0), 0)
+  const res = neto(s) - aprob
   const [fecha, setFecha] = useState(ymd())
   const [medio, setMedio] = useState(res > 0 ? 'Efectivo' : res < 0 ? 'Transferencia al técnico' : 'Sin movimiento de dinero')
   const [nota, setNota] = useState('')
@@ -38,12 +44,14 @@ function Legalizar({ s, onCerrar, onListo }: { s: Saldo; onCerrar: () => void; o
         <div><small>Traspasos</small><b>{s.traspaso_recibido - s.traspaso_entregado >= 0 ? '+' : '−'}{fmt(Math.abs(s.traspaso_recibido - s.traspaso_entregado))}</b></div>
         <div><small>Recibido neto</small><b>{fmt(neto(s))}</b></div>
         <div><small>Reportado</small><b>{fmt(s.reportado)}</b></div>
-        <div><small>Aprobado</small><b>{fmt(s.aprobado)}</b></div>
-        <div><small>No aprobado</small><b>{fmt(s.reportado - s.aprobado)}</b></div>
+        <div><small>Aprobado</small><b>{fmt(aprob)}</b></div>
+        <div><small>No aprobado</small><b>{fmt(s.reportado - aprob)}</b></div>
       </div>
       <div className={'legres ' + (res > 0 ? 'bad' : res < 0 ? 'ok' : '')}>
         {res > 0 ? <>El técnico debe <b>reintegrar {fmt(res)}</b> a la empresa.</> : res < 0 ? <>La empresa debe <b>reembolsar {fmt(-res)}</b> al técnico.</> : <>Cuentas <b>cuadradas</b>: no hay dinero por devolver ni reembolsar.</>}
       </div>
+      {pend.length > 0 && <p className="hint warn">{pend.length} {pend.length > 1 ? 'gastos tienen' : 'gasto tiene'} el RUT o un anexo <b>pendiente por cargar</b> ({pend.map(p => codigo(p.id)).join(', ')}).
+        Si legalizas ahora, {pend.length > 1 ? 'cuentan' : 'cuenta'} como <b>no aprobado</b> y {pend.length > 1 ? 'quedan rechazados' : 'queda rechazado'}; ya está descontado del resultado.</p>}
       {s.rechazado > 0 && <p className="hint warn">Incluye {fmt(s.rechazado)} en reportes rechazados sin corregir: quedan como <b>no aprobados</b> y ya no se podrán corregir.</p>}
       <div className="aform" style={{ marginTop: 10 }}>
         <div><label htmlFor="lg-f">Fecha</label><input id="lg-f" type="date" className="inp" value={fecha} onChange={e => setFecha(e.target.value)} /></div>

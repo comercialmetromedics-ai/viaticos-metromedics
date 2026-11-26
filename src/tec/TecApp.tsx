@@ -3,13 +3,13 @@ import { useApp } from '../lib/store'
 import { msgError, sb } from '../lib/sb'
 import { subirSoporte } from '../lib/img'
 import type { Consignacion, Legalizacion, Reporte, Saldo, Traspaso } from '../lib/types'
-import { codigo, textoResultado, disponible, normOrden, numBase, ORDEN_OK, durTxt, fdate, fhora, fmt, limiteDe, miles, neto, num, recibido, topeDe, ymd } from '../lib/util'
+import { codigo, textoResultado, disponible, normOrden, numBase, ORDEN_OK, durTxt, fdate, fhora, fmt, limiteDe, miles, neto, num, recibido, retencionEsperada, topeDe, ymd } from '../lib/util'
 import { Archivo, Chip, Comparacion, Subir, Tag, Vacio } from '../ui'
 
 type Pantalla = 'home' | 'orden' | 'nueva' | 'form' | 'ok' | 'mis' | 'nov' | 'noresp'
 interface Borrador {
   orden: string; fecha: string; concepto: string; subtipo: string; descripcion: string; noches: string; monto: string
-  fe: boolean | null; soporte: File | string | null; rut: File | string | null; anexo: File | string | null; obs: string; editId?: number; motivo?: string | null
+  fe: boolean | null; soporte: File | string | null; rut: File | string | null; anexo: File | string | null; ret: boolean | null; retV: string; retN: string; rutPend?: boolean; anexoPend?: boolean; obs: string; editId?: number; motivo?: string | null
 }
 
 
@@ -106,17 +106,19 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
       {config!.politica === 'bloquear' && !habil ? 'Para reportar, pide habilitación al administrador.' : habil ? 'Estás habilitado hoy; quedará como extemporáneo.' : 'Lo que reportes ahora queda como extemporáneo.'}</p></div>)
 
   const novedades = reps.filter(r => r.estado === 'rechazado' && r.legalizacion_id == null)
+  const docsPend = reps.filter(r => r.legalizacion_id == null && r.estado !== 'rechazado' && (r.rut_pendiente || r.anexo_pendiente))
+  const nNov = novedades.length + docsPend.length
   const misSaldos = saldos.filter(s => (recibido(s) > 0 || s.reportado > 0 || s.es_responsable) && !app.orden(s.orden)?.archivada).sort((a, b) => b.orden.localeCompare(a.orden))
 
   function nuevoReporte(num: string) {
     const o = app.orden(num)
     if (o && o.responsable !== uid) { setBloq(num); ir('noresp'); return }
-    setD({ orden: num, fecha: ymd(), concepto: '', subtipo: '', descripcion: '', noches: '1', monto: '', fe: null, soporte: null, rut: null, anexo: null, obs: '' })
+    setD({ orden: num, fecha: ymd(), concepto: '', subtipo: '', descripcion: '', noches: '1', monto: '', fe: null, soporte: null, rut: null, anexo: null, ret: null, retV: '', retN: '', obs: '' })
     ir('form')
   }
   function corregir(r: Reporte) {
     setD({ orden: r.orden, fecha: r.fecha_gasto, concepto: r.concepto_id, subtipo: r.subtipo || '', descripcion: r.descripcion || '', noches: String(r.noches),
-      monto: String(r.monto), fe: r.factura_electronica, soporte: r.soporte_path, rut: r.rut_path, anexo: r.anexo_path, obs: r.observaciones || '', editId: r.id, motivo: r.motivo })
+      monto: String(r.monto), fe: r.factura_electronica, soporte: r.soporte_path, rut: r.rut_path, anexo: r.anexo_path, rutPend: r.rut_pendiente, anexoPend: r.anexo_pendiente, ret: r.retencion, retV: r.retencion_valor ? String(r.retencion_valor) : '', retN: r.retencion_nota || '', obs: r.observaciones || '', editId: r.id, motivo: r.motivo })
     ir('form')
   }
 
@@ -131,7 +133,7 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
         <div><b>Viáticos</b><small>{yo!.nombre}</small></div>
         <div className="pbar-r">
           {onAdmin && <button className="btn sm" onClick={onAdmin}>Panel admin</button>}
-          <button className="bell" onClick={() => ir('nov')} aria-label={`Novedades: ${novedades.length}`}>⚑{novedades.length > 0 && <i>{novedades.length}</i>}</button>
+          <button className="bell" onClick={() => ir('nov')} aria-label={`Novedades: ${nNov}`}>⚑{nNov > 0 && <i>{nNov}</i>}</button>
         </div>
       </header>
       <div className="scr">
@@ -147,7 +149,7 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
       <nav className="pnav">
         {nav.map(([s, l]) => (
           <button key={s} aria-current={cur === s} onClick={() => { if (s === 'orden') setQ(''); ir(s) }}>
-            {l}{s === 'nov' && novedades.length > 0 && <em>{novedades.length}</em>}
+            {l}{s === 'nov' && nNov > 0 && <em>{nNov}</em>}
           </button>
         ))}
       </nav>
@@ -166,6 +168,7 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
       <div style={{ height: 12 }} />
       <button className="big" onClick={() => { setQ(''); ir('orden') }}>+ Nuevo reporte de viáticos</button>
       {novedades.length > 0 && <button className="alertb" onClick={() => ir('nov')}>{novedades.length} {novedades.length > 1 ? 'reportes devueltos' : 'reporte devuelto'} para corregir →</button>}
+      {docsPend.length > 0 && <button className="alertb" onClick={() => ir('nov')}>{docsPend.length} {docsPend.length > 1 ? 'documentos pendientes' : 'documento pendiente'} por cargar →</button>}
       {notifOff && <button className="btn w" style={{ marginTop: 10 }} onClick={() => Notification.requestPermission().then(() => setNow(new Date()))}>Activar alertas del plazo</button>}
       {misSaldos.length > 0 && <h3>Mi saldo de viáticos</h3>}
       {misSaldos.map(s => {
@@ -255,7 +258,13 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
   function Novedades() {
     return <>
       <h2>Novedades</h2>
-      {!novedades.length && <Vacio>No tienes reportes devueltos.</Vacio>}
+      {!novedades.length && !docsPend.length && <Vacio>No tienes reportes devueltos ni documentos pendientes.</Vacio>}
+      {docsPend.length > 0 && <>
+        <h3>Documentos pendientes por cargar</h3>
+        <p className="hint warn">Cárgalos antes de que se legalice la orden; si no, el gasto cuenta como no aprobado.</p>
+        {docsPend.map(r => <DocPendiente key={r.id} x={x} r={r} />)}
+        {novedades.length > 0 && <h3>Reportes devueltos</h3>}
+      </>}
       {novedades.map(r => (
         <div className="row col" key={r.id}>
           <div className="rowline"><b>{app.concepto(r.concepto_id)?.nombre} · {fmt(r.monto)}</b><Chip estado={r.estado} /></div>
@@ -279,6 +288,35 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
   }
 }
 
+function Pendiente({ on, set, que }: { on: boolean; set: (v: boolean) => void; que: string }) {
+  return <label className="opt pend"><input type="checkbox" checked={on} onChange={e => set(e.target.checked)} />
+    <span>El vendedor enviará {que} después <small>(queda pendiente por cargar)</small></span></label>
+}
+
+function DocPendiente({ x, r }: { x: X; r: Reporte }) {
+  const { app, uid, cargar } = x
+  const [busy, setBusy] = useState(''); const [err, setErr] = useState('')
+  const k = app.concepto(r.concepto_id)
+  async function subir(tipo: 'rut' | 'anexo', file: File) {
+    setErr(''); setBusy(tipo)
+    try {
+      const path = await subirSoporte(uid, file)
+      const { error } = await sb.rpc('cargar_documento', { p_id: r.id, p_tipo: tipo, p_path: path })
+      if (error) throw error
+      app.toast('Documento cargado'); await cargar()
+    } catch (e) { setErr(msgError(e)) } finally { setBusy('') }
+  }
+  return <div className="row col">
+    <div className="rowline"><b>{k?.nombre} · {fmt(r.monto)}</b><Chip estado={r.estado} /></div>
+    <small>{r.orden} · {app.orden(r.orden)?.cliente} · {fdate(r.fecha_gasto)} · {codigo(r.id)}</small>
+    {r.rut_pendiente && <><label className="f">RUT del proveedor</label>
+      {busy === 'rut' ? <p className="hint">Subiendo…</p> : <Subir label="Tomar foto o subir el RUT" onFile={f => subir('rut', f)} />}</>}
+    {r.anexo_pendiente && <><label className="f">{k?.anexo_nombre || 'Anexo'}</label>
+      {busy === 'anexo' ? <p className="hint">Subiendo…</p> : <Subir label={`Tomar foto o subir: ${k?.anexo_nombre || 'anexo'}`} onFile={f => subir('anexo', f)} />}</>}
+    <p className="err">{err}</p>
+  </div>
+}
+
 function NuevaOrden({ x }: { x: X }) {
   const { app, uid, ir, setD, q } = x
   const { toast, ordenes } = app
@@ -296,7 +334,7 @@ function NuevaOrden({ x }: { x: X }) {
     setBusy(false)
     if (error) return setErr(msgError(error))
     await app.recargar(['ordenes']); toast(`Orden ${n} creada`)
-    setD({ orden: n, fecha: ymd(), concepto: '', subtipo: '', descripcion: '', noches: '1', monto: '', fe: null, soporte: null, rut: null, anexo: null, obs: '' })
+    setD({ orden: n, fecha: ymd(), concepto: '', subtipo: '', descripcion: '', noches: '1', monto: '', fe: null, soporte: null, rut: null, anexo: null, ret: null, retV: '', retN: '', obs: '' })
     ir('form', true)
   }
   return <>
@@ -353,13 +391,18 @@ function Formulario({ x, d }: { x: X, d: Borrador }) {
   const set = (k: keyof Borrador, v: unknown) => setF(x => ({ ...x, [k]: v }))
   const tarde = config ? new Date() > limiteDe(f.fecha, config) : false
 
+  const ret = c ? retencionEsperada(c, monto) : { aplica: false, factura: 0, valor: 0 }
+
   async function enviar() {
     setErr('')
     const e = !f.fecha ? 'Indica la fecha del gasto.' : !c ? 'Selecciona el concepto.' : c.subtipos.length && !f.subtipo ? 'Selecciona el tipo.' :
       c.requiere_descripcion && !f.descripcion.trim() ? 'Describe el gasto.' : !monto ? 'Escribe el monto.' :
       f.fe === null ? 'Indica si el soporte es factura electrónica.' : !f.soporte ? 'Adjunta la foto o archivo del soporte.' :
-      !f.fe && c.rut_modo === 'obligatorio' && !f.rut ? 'Adjunta el RUT del proveedor (el soporte no es electrónico).' :
-      c.anexo_modo === 'obligatorio' && !f.anexo ? `Adjunta: ${c.anexo_nombre || 'anexo'}.` : ''
+      !f.fe && c.rut_modo === 'obligatorio' && !f.rut && !f.rutPend ? 'Adjunta el RUT del proveedor o márcalo como pendiente.' :
+      c.anexo_modo === 'obligatorio' && !f.anexo && !f.anexoPend ? `Adjunta: ${c.anexo_nombre || 'anexo'} o márcalo como pendiente.` :
+      c.pide_retencion && ret.aplica && f.ret === null ? 'Indica si se practicó la retención.' :
+      c.pide_retencion && f.ret && !num(f.retV) ? 'Escribe el valor retenido.' :
+      c.pide_retencion && ret.aplica && f.ret === false && !f.retN.trim() ? 'Explica por qué no se practicó la retención.' : ''
     if (e) return setErr(e)
     if (tarde && !f.editId && config!.politica === 'bloquear' && !habil)
       return setErr(`El plazo para los gastos del ${fdate(f.fecha)} cerró a las ${fhora(limiteDe(f.fecha, config!))}; pide al administrador que te habilite.`)
@@ -371,12 +414,19 @@ function Formulario({ x, d }: { x: X, d: Borrador }) {
       setBusy('Enviando…')
       const campos = { fecha_gasto: f.fecha, concepto_id: c!.id, subtipo: c!.subtipos.length ? f.subtipo : null,
         descripcion: c!.requiere_descripcion ? f.descripcion.trim() : null, noches: c!.por_noche ? noches : 1, monto,
-        factura_electronica: f.fe!, soporte_path: sop, rut_path: rut, anexo_path: anexo, observaciones: f.obs.trim() || null }
+        factura_electronica: f.fe!, soporte_path: sop, rut_path: rut, anexo_path: anexo,
+        rut_pendiente: !f.fe && c!.rut_modo === 'obligatorio' && !rut && !!f.rutPend,
+        anexo_pendiente: c!.anexo_modo === 'obligatorio' && !anexo && !!f.anexoPend,
+        retencion: !c!.pide_retencion ? null : ret.aplica ? f.ret : false,
+        retencion_valor: c!.pide_retencion && ret.aplica && f.ret ? num(f.retV) : null,
+        retencion_nota: !c!.pide_retencion ? null : !ret.aplica ? `No aplica: factura menor a la base de ${fmt(c!.retencion_base || 0)}` : f.ret === false ? f.retN.trim() : null, observaciones: f.obs.trim() || null }
       let r: Reporte
       if (f.editId) {
         const { error } = await sb.rpc('reenviar_reporte', { p_id: f.editId, p_fecha: campos.fecha_gasto, p_concepto: campos.concepto_id,
           p_subtipo: campos.subtipo, p_descripcion: campos.descripcion, p_noches: campos.noches, p_monto: monto, p_fe: campos.factura_electronica,
-          p_soporte: sop, p_rut: rut, p_obs: campos.observaciones, p_anexo: anexo })
+          p_soporte: sop, p_rut: rut, p_obs: campos.observaciones, p_anexo: anexo,
+          p_ret: campos.retencion, p_ret_valor: campos.retencion_valor, p_ret_nota: campos.retencion_nota,
+          p_rut_pend: campos.rut_pendiente, p_anexo_pend: campos.anexo_pendiente })
         if (error) throw error
         r = { ...editando!, ...campos, estado: 'pendiente', reenvios: (editando?.reenvios || 0) + 1 }
       } else {
@@ -433,12 +483,33 @@ function Formulario({ x, d }: { x: X, d: Borrador }) {
       {f.fe ? <p className="hint">Con factura electrónica no se pide RUT.</p>
         : c && c.rut_modo === 'no' ? <p className="hint">Para {c.nombre.toLowerCase()} no se pide RUT.</p> : <>
         <label className="f">RUT del proveedor{c?.rut_modo === 'opcional' && ' (opcional)'}</label>
-        {f.rut ? <Archivo file={f.rut} onClear={() => set('rut', null)} /> : <Subir label="Tomar foto o subir el RUT" onFile={x => set('rut', x)} />}
-        {c?.rut_modo !== 'opcional' && <p className="hint">Obligatorio cuando el soporte no es factura electrónica.</p>}
+        {f.rut ? <Archivo file={f.rut} onClear={() => set('rut', null)} /> : !f.rutPend && <Subir label="Tomar foto o subir el RUT" onFile={x => set('rut', x)} />}
+        {c?.rut_modo === 'obligatorio' && !f.rut && <Pendiente on={!!f.rutPend} set={v => set('rutPend', v)} que="el RUT" />}
+        {c?.rut_modo !== 'opcional' && !f.rutPend && <p className="hint">Obligatorio cuando el soporte no es factura electrónica.</p>}
       </>}
       {c && c.anexo_modo !== 'no' && <>
         <label className="f">{c.anexo_nombre || 'Anexo'}{c.anexo_modo === 'opcional' && ' (opcional)'}</label>
-        {f.anexo ? <Archivo file={f.anexo} onClear={() => set('anexo', null)} /> : <Subir label={`Tomar foto o subir: ${c.anexo_nombre || 'anexo'}`} onFile={x => set('anexo', x)} />}
+        {f.anexo ? <Archivo file={f.anexo} onClear={() => set('anexo', null)} /> : !f.anexoPend && <Subir label={`Tomar foto o subir: ${c.anexo_nombre || 'anexo'}`} onFile={x => set('anexo', x)} />}
+        {c.anexo_modo === 'obligatorio' && !f.anexo && <Pendiente on={!!f.anexoPend} set={v => set('anexoPend', v)} que={c.anexo_nombre || 'el anexo'} />}
+      </>}
+    </>}
+    {c?.pide_retencion && monto > 0 && !ret.aplica && <p className="hint">Retención: no aplica (factura menor a {fmt(c.retencion_base || 0)}).</p>}
+    {c?.pide_retencion && ret.aplica && <>
+      <label className="f">¿Practicaste la retención en la fuente?</label>
+      {c.retencion_pct != null && <p className="hint">Se retiene el {String(c.retencion_pct).replace('.', ',')} %{c.retencion_base ? ` desde ${fmt(c.retencion_base)}` : ''}. Para lo que pagaste, la factura sería de unos {fmt(ret.factura)} y la retención de unos <b>{fmt(ret.valor)}</b>.</p>}
+      <div className="tog">
+        <button type="button" aria-pressed={f.ret === true} onClick={() => setF(x => ({ ...x, ret: true, retV: x.retV || (ret.valor ? String(ret.valor) : '') }))}>Sí, la practiqué</button>
+        <button type="button" aria-pressed={f.ret === false} onClick={() => setF(x => ({ ...x, ret: false }))}>No</button>
+      </div>
+      {f.ret === true && <>
+        <label className="f" htmlFor="f-rv">Valor retenido</label>
+        <div className="money"><span>$</span><input id="f-rv" inputMode="numeric" value={miles(num(f.retV))} onChange={e => set('retV', e.target.value)} placeholder="0" /></div>
+        <p className="hint">En "Monto pagado" va lo que realmente le pagaste al hotel (sin la retención).</p>
+      </>}
+      {f.ret === false && <>
+        <label className="f" htmlFor="f-rn">¿Por qué no se practicó?</label>
+        <input id="f-rn" className="inp" value={f.retN} onChange={e => set('retN', e.target.value)} placeholder="Ej. el hotel no la aceptó" />
+        <p className="hint warn">El administrador verá que este gasto no tiene retención.</p>
       </>}
     </>}
     <label className="f" htmlFor="f-o">Observaciones (opcional)</label>

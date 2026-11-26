@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useApp } from '../lib/store'
 import { msgError, sb } from '../lib/sb'
-import type { Reporte, Saldo } from '../lib/types'
-import { codigo, disponible, fdate, fhora, fmt, limiteDe, recibido, topeDe } from '../lib/util'
+import type { Concepto, Reporte, Saldo } from '../lib/types'
+import { codigo, disponible, fdate, fhora, fmt, limiteDe, recibido, retencionEsperada, topeDe } from '../lib/util'
 import { Cargando, Comparacion, Soporte, Tag, Vacio } from '../ui'
 
+/** La retención reportada difiere de la esperada en más de $1.000 */
+const difRet = (c: Concepto, r: Reporte) => c.retencion_pct != null && r.retencion_valor != null && Math.abs(retencionEsperada(c, r.monto).valor - r.retencion_valor) > 1000
 const MOTIVOS = ['El soporte no es factura electrónica', 'Falta el RUT', 'Imagen ilegible', 'El monto no coincide con el soporte', 'Gasto no autorizado', 'Fecha del soporte no corresponde']
 
 export default function Revisar({ tick, onCambio }: { tick: number; onCambio: () => void }) {
@@ -64,7 +66,7 @@ function Tarjeta({ r, saldo, onHecho }: { r: Reporte; saldo?: Saldo; onHecho: ()
     <article className="rc">
       <div className="thumbs">
         <Soporte path={r.soporte_path} label={r.factura_electronica ? 'Factura' : 'Comprobante'} />
-        {r.rut_path ? <Soporte path={r.rut_path} label="RUT" /> : <div className="none">Sin RUT<br />({r.factura_electronica ? 'factura electrónica' : c?.rut_modo === 'obligatorio' ? 'falta' : 'no se pide'})</div>}
+        {r.rut_path ? <Soporte path={r.rut_path} label="RUT" /> : <div className="none">Sin RUT<br />({r.factura_electronica ? 'factura electrónica' : r.rut_pendiente ? 'pendiente por cargar' : c?.rut_modo === 'obligatorio' ? 'falta' : 'no se pide'})</div>}
         {r.anexo_path && <Soporte path={r.anexo_path} label={c?.anexo_nombre || 'Anexo'} />}
       </div>
       <div>
@@ -78,9 +80,14 @@ function Tarjeta({ r, saldo, onHecho }: { r: Reporte; saldo?: Saldo; onHecho: ()
         <Comparacion compacta monto={r.monto} tope={tope} concepto={c?.nombre} />
         <ul className="checks">
           <li className="y">✓ {r.factura_electronica ? 'Factura electrónica' : 'Comprobante no electrónico'}</li>
-          {r.rut_path ? <li className="y">✓ RUT adjunto</li> : r.factura_electronica || c?.rut_modo !== 'obligatorio' ? <li className="y">✓ No requiere RUT{!r.factura_electronica && ` (${c?.nombre})`}</li> : r.rut_path ? <li className="y">✓ RUT adjunto</li> : <li className="n">✗ Falta RUT</li>}
-          {c && c.anexo_modo !== 'no' && (r.anexo_path ? <li className="y">✓ {c.anexo_nombre || 'Anexo'} adjunto</li>
+          {r.rut_path ? <li className="y">✓ RUT adjunto</li> : r.rut_pendiente ? null : r.factura_electronica || c?.rut_modo !== 'obligatorio' ? <li className="y">✓ No requiere RUT{!r.factura_electronica && ` (${c?.nombre})`}</li> : r.rut_path ? <li className="y">✓ RUT adjunto</li> : <li className="n">✗ Falta RUT</li>}
+          {r.rut_pendiente && <li className="n">⏳ RUT pendiente por cargar: si no llega antes de legalizar, este gasto cuenta como no aprobado</li>}
+          {r.anexo_pendiente && <li className="n">⏳ {c?.anexo_nombre || 'Anexo'} pendiente por cargar: si no llega antes de legalizar, cuenta como no aprobado</li>}
+          {c && c.anexo_modo !== 'no' && !r.anexo_pendiente && (r.anexo_path ? <li className="y">✓ {c.anexo_nombre || 'Anexo'} adjunto</li>
             : c.anexo_modo === 'obligatorio' ? <li className="n">✗ Falta {c.anexo_nombre || 'anexo'}</li> : null)}
+          {c?.pide_retencion && (r.retencion ? <li className={difRet(c, r) ? 'n' : 'y'}>{difRet(c, r) ? '⚠' : '✓'} Retención practicada: {fmt(r.retencion_valor || 0)}{difRet(c, r) && ` · esperada ≈ ${fmt(retencionEsperada(c, r.monto).valor)}`}</li>
+            : r.retencion === false && r.retencion_nota?.startsWith('No aplica') ? <li className="y">✓ {r.retencion_nota}</li>
+            : r.retencion === false ? <li className="n">✗ Sin retención: {r.retencion_nota}</li> : <li className="n">✗ No indicó la retención</li>)}
           {r.observaciones && <li className="mute">Nota: {r.observaciones}</li>}
         </ul>
         {rech ? (
