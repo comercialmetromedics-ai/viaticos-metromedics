@@ -64,7 +64,8 @@ function Tarjeta({ r, saldo, onHecho }: { r: Reporte; saldo?: Saldo; onHecho: ()
     <article className="rc">
       <div className="thumbs">
         <Soporte path={r.soporte_path} label={r.factura_electronica ? 'Factura' : 'Comprobante'} />
-        {r.rut_path ? <Soporte path={r.rut_path} label="RUT" /> : <div className="none">Sin RUT<br />(factura electrónica)</div>}
+        {r.rut_path ? <Soporte path={r.rut_path} label="RUT" /> : <div className="none">Sin RUT<br />({r.factura_electronica ? 'factura electrónica' : c?.rut_modo === 'obligatorio' ? 'falta' : 'no se pide'})</div>}
+        {r.anexo_path && <Soporte path={r.anexo_path} label={c?.anexo_nombre || 'Anexo'} />}
       </div>
       <div>
         <div className="rtop"><b>{c?.nombre}{det ? ' · ' + det : ''}</b><span className="amt">{fmt(r.monto)}</span></div>
@@ -77,7 +78,9 @@ function Tarjeta({ r, saldo, onHecho }: { r: Reporte; saldo?: Saldo; onHecho: ()
         <Comparacion compacta monto={r.monto} tope={tope} concepto={c?.nombre} />
         <ul className="checks">
           <li className="y">✓ {r.factura_electronica ? 'Factura electrónica' : 'Comprobante no electrónico'}</li>
-          {r.factura_electronica ? <li className="y">✓ No requiere RUT</li> : r.rut_path ? <li className="y">✓ RUT adjunto</li> : <li className="n">✗ Falta RUT</li>}
+          {r.rut_path ? <li className="y">✓ RUT adjunto</li> : r.factura_electronica || c?.rut_modo !== 'obligatorio' ? <li className="y">✓ No requiere RUT{!r.factura_electronica && ` (${c?.nombre})`}</li> : r.rut_path ? <li className="y">✓ RUT adjunto</li> : <li className="n">✗ Falta RUT</li>}
+          {c && c.anexo_modo !== 'no' && (r.anexo_path ? <li className="y">✓ {c.anexo_nombre || 'Anexo'} adjunto</li>
+            : c.anexo_modo === 'obligatorio' ? <li className="n">✗ Falta {c.anexo_nombre || 'anexo'}</li> : null)}
           {r.observaciones && <li className="mute">Nota: {r.observaciones}</li>}
         </ul>
         {rech ? (

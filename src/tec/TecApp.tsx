@@ -9,7 +9,7 @@ import { Archivo, Chip, Comparacion, Subir, Tag, Vacio } from '../ui'
 type Pantalla = 'home' | 'orden' | 'nueva' | 'form' | 'ok' | 'mis' | 'nov' | 'noresp'
 interface Borrador {
   orden: string; fecha: string; concepto: string; subtipo: string; descripcion: string; noches: string; monto: string
-  fe: boolean | null; soporte: File | string | null; rut: File | string | null; obs: string; editId?: number; motivo?: string | null
+  fe: boolean | null; soporte: File | string | null; rut: File | string | null; anexo: File | string | null; obs: string; editId?: number; motivo?: string | null
 }
 
 
@@ -111,12 +111,12 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
   function nuevoReporte(num: string) {
     const o = app.orden(num)
     if (o && o.responsable !== uid) { setBloq(num); ir('noresp'); return }
-    setD({ orden: num, fecha: ymd(), concepto: '', subtipo: '', descripcion: '', noches: '1', monto: '', fe: null, soporte: null, rut: null, obs: '' })
+    setD({ orden: num, fecha: ymd(), concepto: '', subtipo: '', descripcion: '', noches: '1', monto: '', fe: null, soporte: null, rut: null, anexo: null, obs: '' })
     ir('form')
   }
   function corregir(r: Reporte) {
     setD({ orden: r.orden, fecha: r.fecha_gasto, concepto: r.concepto_id, subtipo: r.subtipo || '', descripcion: r.descripcion || '', noches: String(r.noches),
-      monto: String(r.monto), fe: r.factura_electronica, soporte: r.soporte_path, rut: r.rut_path, obs: r.observaciones || '', editId: r.id, motivo: r.motivo })
+      monto: String(r.monto), fe: r.factura_electronica, soporte: r.soporte_path, rut: r.rut_path, anexo: r.anexo_path, obs: r.observaciones || '', editId: r.id, motivo: r.motivo })
     ir('form')
   }
 
@@ -296,7 +296,7 @@ function NuevaOrden({ x }: { x: X }) {
     setBusy(false)
     if (error) return setErr(msgError(error))
     await app.recargar(['ordenes']); toast(`Orden ${n} creada`)
-    setD({ orden: n, fecha: ymd(), concepto: '', subtipo: '', descripcion: '', noches: '1', monto: '', fe: null, soporte: null, rut: null, obs: '' })
+    setD({ orden: n, fecha: ymd(), concepto: '', subtipo: '', descripcion: '', noches: '1', monto: '', fe: null, soporte: null, rut: null, anexo: null, obs: '' })
     ir('form', true)
   }
   return <>
@@ -358,23 +358,25 @@ function Formulario({ x, d }: { x: X, d: Borrador }) {
     const e = !f.fecha ? 'Indica la fecha del gasto.' : !c ? 'Selecciona el concepto.' : c.subtipos.length && !f.subtipo ? 'Selecciona el tipo.' :
       c.requiere_descripcion && !f.descripcion.trim() ? 'Describe el gasto.' : !monto ? 'Escribe el monto.' :
       f.fe === null ? 'Indica si el soporte es factura electrónica.' : !f.soporte ? 'Adjunta la foto o archivo del soporte.' :
-      !f.fe && !f.rut ? 'Adjunta el RUT del proveedor (el soporte no es electrónico).' : ''
+      !f.fe && c.rut_modo === 'obligatorio' && !f.rut ? 'Adjunta el RUT del proveedor (el soporte no es electrónico).' :
+      c.anexo_modo === 'obligatorio' && !f.anexo ? `Adjunta: ${c.anexo_nombre || 'anexo'}.` : ''
     if (e) return setErr(e)
     if (tarde && !f.editId && config!.politica === 'bloquear' && !habil)
       return setErr(`El plazo para los gastos del ${fdate(f.fecha)} cerró a las ${fhora(limiteDe(f.fecha, config!))}; pide al administrador que te habilite.`)
     try {
       setBusy('Subiendo soporte…')
       const sop = typeof f.soporte === 'string' ? f.soporte : await subirSoporte(uid, f.soporte!)
-      const rut = f.fe ? null : typeof f.rut === 'string' ? f.rut : await subirSoporte(uid, f.rut!)
+      const rut = f.fe || c!.rut_modo === 'no' || !f.rut ? null : typeof f.rut === 'string' ? f.rut : await subirSoporte(uid, f.rut)
+      const anexo = c!.anexo_modo === 'no' || !f.anexo ? null : typeof f.anexo === 'string' ? f.anexo : await subirSoporte(uid, f.anexo)
       setBusy('Enviando…')
       const campos = { fecha_gasto: f.fecha, concepto_id: c!.id, subtipo: c!.subtipos.length ? f.subtipo : null,
         descripcion: c!.requiere_descripcion ? f.descripcion.trim() : null, noches: c!.por_noche ? noches : 1, monto,
-        factura_electronica: f.fe!, soporte_path: sop, rut_path: rut, observaciones: f.obs.trim() || null }
+        factura_electronica: f.fe!, soporte_path: sop, rut_path: rut, anexo_path: anexo, observaciones: f.obs.trim() || null }
       let r: Reporte
       if (f.editId) {
         const { error } = await sb.rpc('reenviar_reporte', { p_id: f.editId, p_fecha: campos.fecha_gasto, p_concepto: campos.concepto_id,
           p_subtipo: campos.subtipo, p_descripcion: campos.descripcion, p_noches: campos.noches, p_monto: monto, p_fe: campos.factura_electronica,
-          p_soporte: sop, p_rut: rut, p_obs: campos.observaciones })
+          p_soporte: sop, p_rut: rut, p_obs: campos.observaciones, p_anexo: anexo })
         if (error) throw error
         r = { ...editando!, ...campos, estado: 'pendiente', reenvios: (editando?.reenvios || 0) + 1 }
       } else {
@@ -428,10 +430,15 @@ function Formulario({ x, d }: { x: X, d: Borrador }) {
     {f.fe !== null && <>
       <label className="f">{f.fe ? 'Factura electrónica (foto o PDF)' : 'Comprobante (foto del recibo o factura)'}</label>
       {f.soporte ? <Archivo file={f.soporte} onClear={() => set('soporte', null)} /> : <Subir label="Tomar foto o subir archivo" onFile={x => set('soporte', x)} />}
-      {f.fe ? <p className="hint">Con factura electrónica no se pide RUT.</p> : <>
-        <label className="f">RUT del proveedor</label>
+      {f.fe ? <p className="hint">Con factura electrónica no se pide RUT.</p>
+        : c && c.rut_modo === 'no' ? <p className="hint">Para {c.nombre.toLowerCase()} no se pide RUT.</p> : <>
+        <label className="f">RUT del proveedor{c?.rut_modo === 'opcional' && ' (opcional)'}</label>
         {f.rut ? <Archivo file={f.rut} onClear={() => set('rut', null)} /> : <Subir label="Tomar foto o subir el RUT" onFile={x => set('rut', x)} />}
-        <p className="hint">Obligatorio cuando el soporte no es factura electrónica.</p>
+        {c?.rut_modo !== 'opcional' && <p className="hint">Obligatorio cuando el soporte no es factura electrónica.</p>}
+      </>}
+      {c && c.anexo_modo !== 'no' && <>
+        <label className="f">{c.anexo_nombre || 'Anexo'}{c.anexo_modo === 'opcional' && ' (opcional)'}</label>
+        {f.anexo ? <Archivo file={f.anexo} onClear={() => set('anexo', null)} /> : <Subir label={`Tomar foto o subir: ${c.anexo_nombre || 'anexo'}`} onFile={x => set('anexo', x)} />}
       </>}
     </>}
     <label className="f" htmlFor="f-o">Observaciones (opcional)</label>

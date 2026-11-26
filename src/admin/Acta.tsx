@@ -58,7 +58,7 @@ export default function Acta({ l, onCerrar }: { l: Legalizacion; onCerrar: () =>
           <tbody>
             {reps.map(r => <tr key={r.id}><td>{fdate(r.fecha_gasto)}</td><td>{codigo(r.id)}</td>
               <td>{app.concepto(r.concepto_id)?.nombre}{r.subtipo || r.descripcion ? ' · ' + (r.subtipo || r.descripcion) : ''}</td>
-              <td className="soporte-cel"><span className="noprint"><Soporte size="s" path={r.soporte_path} label="Ver" /></span><span>{r.factura_electronica ? 'FE' : 'Recibo + RUT'}</span></td>
+              <td className="soporte-cel"><span className="noprint"><Soporte size="s" path={r.soporte_path} label="Ver" /></span><span>{r.factura_electronica ? 'FE' : r.rut_path ? 'Recibo + RUT' : 'Recibo'}</span></td>
               <td>{r.estado === 'rechazado' ? 'No aprobado' : ESTADOS[r.estado]}</td>
               <td className="n">{fmt(r.monto)}</td><td className="n">{fmt(r.aprobado || 0)}</td></tr>)}
             <tr className="tot"><td colSpan={5}>Totales</td><td className="n">{fmt(l.reportado)}</td><td className="n">{fmt(l.aprobado)}</td></tr>

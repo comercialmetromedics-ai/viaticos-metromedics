@@ -66,7 +66,7 @@ export function Aprobados({ tick }: { tick: number }) {
                 <tbody>{rs.map(r => <tr key={r.id}>
                   <td>{fdate(r.fecha_gasto)}</td><td>{app.nombre(r.tecnico)}</td>
                   <td>{app.concepto(r.concepto_id)?.nombre}{r.subtipo || r.descripcion ? ' · ' + (r.subtipo || r.descripcion) : ''} {r.estado === 'parcial' && <Tag k="ok">Hasta tope</Tag>} {r.extemporaneo && <Tag k="w">Extemporáneo</Tag>}</td>
-                  <td><div className="mini"><Soporte size="s" path={r.soporte_path} label={r.factura_electronica ? 'FE' : 'Recibo'} />{r.rut_path && <Soporte size="s" path={r.rut_path} label="RUT" />}</div></td>
+                  <td><div className="mini"><Soporte size="s" path={r.soporte_path} label={r.factura_electronica ? 'FE' : 'Recibo'} />{r.rut_path && <Soporte size="s" path={r.rut_path} label="RUT" />}{r.anexo_path && <Soporte size="s" path={r.anexo_path} label="Anexo" />}</div></td>
                   <td className="n">{fmt(r.monto)}</td><td className="n"><b>{fmt(r.aprobado)}</b></td></tr>)}</tbody></table>
             </div>
           ))}
