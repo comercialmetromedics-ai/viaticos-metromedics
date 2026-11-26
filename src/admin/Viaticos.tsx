@@ -8,7 +8,7 @@ import { Cargando, Tag } from '../ui'
 function liquidacion(s: Saldo) {
   if (s.por_revisar + s.rechazado > 0) return <Tag k="w">En revisión</Tag>
   const d = neto(s) - s.aprobado, p = s.es_responsable ? 'Si cierra hoy: ' : ''
-  return d > 0 ? <Tag k="bad">{p}reintegra {fmt(d)}</Tag> : d < 0 ? <Tag k="ok">{p}se le debe {fmt(-d)}</Tag> : <Tag>Cuadrado</Tag>
+  return d > 0 ? <Tag k="bad">{p}reintegra {fmt(d)}</Tag> : d < 0 ? <Tag k="ok">{p}reembolsar {fmt(-d)}</Tag> : <Tag>Cuadrado</Tag>
 }
 
 export default function Viaticos({ tick }: { tick: number }) {

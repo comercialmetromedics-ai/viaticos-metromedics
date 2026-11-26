@@ -181,6 +181,7 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
               ...cons.filter(c => c.orden === s.orden).map(c => `Consignación ${fdate(c.fecha)} ${fmt(c.monto)}`),
               ...tras.filter(t => t.orden === s.orden && t.a === uid).map(t => `Recibido de ${app.nombre(t.de).split(' ')[0]} ${fdate(t.fecha)} ${fmt(t.monto)}`)
             ].join(' · ')}</p>
+            {s.es_responsable && disp > 0 && <p className="hint">El disponible es dinero de la empresa para gastos de esta orden; lo que no se use o no se apruebe se devuelve al legalizar.</p>}
             {entregas.map(t => <p key={t.id} className="hint ink">Entregaste la responsabilidad a <b>{app.nombre(t.a)}</b> el {fdate(t.fecha)} con {fmt(t.monto)}. Las consignaciones nuevas ya no te corresponden.</p>)}
           </div>
         )
@@ -411,8 +412,8 @@ function Formulario({ x, d }: { x: X, d: Borrador }) {
       detalle={c?.por_noche && noches > 1 && base != null ? ` (${noches} noches × ${fmt(base)})` : ''} />
     {s && recibido(s) > 0
       ? <div className="sal">Saldo de viáticos en {f.orden}: <b>{fmt(disp)}</b>{monto > 0 && <> · después de este gasto: <b style={{ color: disp - monto < 0 ? 'var(--bad)' : 'var(--ok)' }}>{fmt(disp - monto)}</b></>}
-        {monto > 0 && disp - monto < 0 && <><br /><span className="hint">Superas lo entregado; la diferencia se te reconoce al legalizar si se aprueba.</span></>}</div>
-      : <div className="sal">No tienes viáticos entregados para {f.orden}. Si se aprueba, este gasto queda <b>a tu favor</b> como reembolso.</div>}
+        {monto > 0 && disp - monto < 0 && <><br /><span className="hint">Superas lo consignado: si este gasto se aprueba, la empresa te reembolsa solo esa diferencia.</span></>}</div>
+      : <div className="sal">No tienes viáticos consignados para {f.orden}. Si lo pagaste con tu dinero, la empresa te reembolsa lo que se apruebe de este gasto.</div>}
     <label className="f">¿El soporte es factura electrónica?</label>
     <div className="tog">
       <button type="button" aria-pressed={f.fe === true} onClick={() => setF(x => ({ ...x, fe: true }))}>Sí, electrónica</button>
