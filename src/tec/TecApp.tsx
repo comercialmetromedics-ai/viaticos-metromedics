@@ -3,7 +3,7 @@ import { useApp } from '../lib/store'
 import { msgError, sb } from '../lib/sb'
 import { subirSoporte } from '../lib/img'
 import type { Consignacion, Reporte, Saldo, Traspaso } from '../lib/types'
-import { codigo, disponible, durTxt, fdate, fhora, fmt, limiteDe, miles, neto, num, recibido, topeDe, ymd } from '../lib/util'
+import { codigo, disponible, normOrden, numBase, ORDEN_OK, durTxt, fdate, fhora, fmt, limiteDe, miles, neto, num, recibido, topeDe, ymd } from '../lib/util'
 import { Archivo, Chip, Comparacion, Subir, Tag, Vacio } from '../ui'
 
 type Pantalla = 'home' | 'orden' | 'nueva' | 'form' | 'ok' | 'mis' | 'nov' | 'noresp'
@@ -200,13 +200,13 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
   }
 
   function BuscarOrden() {
-    const Q = q.trim().toUpperCase()
-    const lista = ordenes.filter(o => !Q || o.num.includes(Q) || o.cliente.toUpperCase().includes(Q)).slice(0, 8)
-    const existe = ordenes.some(o => o.num === Q || o.num === 'MMCS-' + Q)
+    const Q = normOrden(q), N = numBase(q)
+    const lista = ordenes.filter(o => !Q || o.num.includes(Q) || (N && numBase(o.num) === N) || o.cliente.toUpperCase().includes(q.trim().toUpperCase())).slice(0, 8)
+    const existe = ordenes.some(o => o.num === Q || (N && numBase(o.num) === N))
     return <>
       <h2>¿A qué orden de servicio?</h2>
       <label className="f" htmlFor="oq">Número de orden o cliente</label>
-      <input id="oq" className="inp" value={q} onChange={e => setQ(e.target.value)} placeholder="Ej. MMCS-1234" autoComplete="off" autoCapitalize="characters" autoFocus />
+      <input id="oq" className="inp" value={q} onChange={e => setQ(e.target.value)} placeholder="Ej. 4120 o 4120-CAL-MMCS" autoComplete="off" autoCapitalize="characters" autoFocus />
       <div style={{ marginTop: 12 }}>
         {lista.map(o => (
           <button className="row" key={o.num} onClick={() => nuevoReporte(o.num)}>
@@ -216,7 +216,7 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
         ))}
         {Q && !existe && (
           <div className="row dashed">
-            <b>La orden {/^\d+$/.test(Q) ? 'MMCS-' + Q : Q} no existe todavía</b>
+            <b>La orden {Q} no existe todavía</b>
             <small>Créala una vez y quedará disponible para los demás técnicos.</small>
             <button className="btn pri w" onClick={() => ir('nueva')}>Crear orden</button>
           </div>
@@ -274,13 +274,14 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
 
 function NuevaOrden({ x }: { x: X }) {
   const { app, uid, ir, setD, q } = x
-  const { toast } = app
-  const Q = q.trim().toUpperCase()
-  const [numO, setNum] = useState(/^\d+$/.test(Q) ? 'MMCS-' + Q : Q)
+  const { toast, ordenes } = app
+  const [numO, setNum] = useState(normOrden(q))
   const [cli, setCli] = useState(''); const [ciu, setCiu] = useState(''); const [err, setErr] = useState(''); const [busy, setBusy] = useState(false)
   async function crear() {
-    const n = numO.trim().toUpperCase()
-    if (!/^MMCS-\d+$/.test(n)) return setErr('El número debe tener el formato MMCS-1234.')
+    const n = normOrden(numO)
+    if (!ORDEN_OK.test(n)) return setErr('Escribe el número de la orden con letras, números y guiones (ej. 4120-CAL-MMCS).')
+    const dup = numBase(n) ? ordenes.find(o => numBase(o.num) === numBase(n)) : undefined
+    if (dup) return setErr(`Ya existe la orden ${dup.num}; búscala en la lista.`)
     if (cli.trim().length < 2) return setErr('Escribe la razón social del cliente.')
     if (!ciu) return setErr('Selecciona la ciudad.')
     setBusy(true)
@@ -295,7 +296,8 @@ function NuevaOrden({ x }: { x: X }) {
     <h2>Crear orden de servicio</h2>
     <p className="hint">Se crea una sola vez y la ven todos. Quien la crea queda como responsable de reportar sus gastos.</p>
     <label className="f" htmlFor="no-n">Número de orden</label>
-    <input id="no-n" className="inp" value={numO} onChange={e => setNum(e.target.value.toUpperCase())} placeholder="MMCS-1234" autoCapitalize="characters" />
+    <input id="no-n" className="inp" value={numO} onChange={e => setNum(e.target.value.toUpperCase())} placeholder="Ej. 4120-CAL-MMCS" autoCapitalize="characters" />
+  <p className="hint">Escríbela completa como aparece en la orden de servicio (ej. 4120-CAL-MMCS o 4120-MTO-MMCS). El número no se puede repetir.</p>
     <label className="f" htmlFor="no-c">Razón social del cliente</label>
     <input id="no-c" className="inp" value={cli} onChange={e => setCli(e.target.value)} placeholder="Ej. Hospital San Rafael E.S.E." />
     <label className="f" htmlFor="no-ci">Ciudad</label>

@@ -1,6 +1,6 @@
 # Viáticos · Metromedics S.A.S
 
-App para que el personal de campo reporte sus viáticos por orden de servicio (`MMCS-1234`) y el administrador los revise, controle consignaciones y vea indicadores.
+App para que el personal de campo reporte sus viáticos por orden de servicio (ej. `4120-CAL-MMCS`) y el administrador los revise, controle consignaciones y vea indicadores.
 
 - **Una sola app web instalable (PWA):** el técnico la usa en el celular (Android o iPhone) y el administrador en el PC. Cada uno ve lo suyo según su usuario.
 - **Backend:** Supabase (base de datos PostgreSQL, usuarios, fotos de facturas y RUT).

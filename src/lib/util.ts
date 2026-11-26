@@ -5,6 +5,11 @@ const NF = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', 
 export const fmt = (n?: number | null) => (n == null ? '—' : NF.format(n))
 export const num = (v: unknown) => Number(String(v ?? '').replace(/\D/g, '')) || 0
 export const miles = (n: number) => (n ? n.toLocaleString('es-CO') : '')
+/** Orden en mayúsculas, sin espacios: "4120 cal mmcs" → "4120-CAL-MMCS" */
+export const normOrden = (s: string) => s.trim().toUpperCase().replace(/[\s_]+/g, '-').replace(/[^A-Z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')
+/** Número inicial de la orden (único): "4120-CAL-MMCS" → "4120" */
+export const numBase = (s: string) => (normOrden(s).match(/^\d+/) || [''])[0]
+export const ORDEN_OK = /^[A-Z0-9][A-Z0-9-]{0,39}$/
 export const codigo = (id: number) => 'V-' + String(id).padStart(4, '0')
 
 /** Fecha YYYY-MM-DD en Colombia */

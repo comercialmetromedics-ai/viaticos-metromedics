@@ -82,13 +82,16 @@ create table public.habilitaciones (
 
 -- ---------- Órdenes de servicio ----------
 create table public.ordenes (
-  num text primary key check (num ~ '^MMCS-[0-9]+$'),
+  num text primary key check (num ~ '^[A-Z0-9][A-Z0-9-]{0,39}$'),
   cliente text not null check (length(trim(cliente)) > 1),
   ciudad_id int not null references public.ciudades(id),
   creada_por uuid references public.perfiles(id) default auth.uid(),
   responsable uuid not null references public.perfiles(id),
   created_at timestamptz not null default now()
 );
+
+-- El número inicial de la orden es único (4120-CAL-MMCS y 4120-MTO-MMCS no pueden coexistir)
+create unique index ordenes_numero_unico on public.ordenes ((substring(num from '^[0-9]+')));
 
 -- ---------- Reportes de gasto ----------
 create table public.reportes (

@@ -84,7 +84,7 @@ with sync_playwright() as p:
     pg.goto('http://localhost:4173/'); pg.wait_for_selector('text=Hola, Carlos', timeout=8000)
     pg.screenshot(path='/tmp/r1.png', full_page=True)
     assert 'Mi saldo de viáticos' in pg.content()
-    pg.click('text=+ Nuevo reporte de viáticos'); pg.fill('#oq', '1250'); pg.click('text=Crear orden')
+    pg.click('text=+ Nuevo reporte de viáticos'); pg.fill('#oq', '4120 cal mmcs'); pg.click('text=Crear orden')
     pg.fill('#no-c', 'Clínica Prueba S.A.S.'); pg.select_option('#no-ci', '1'); pg.click('text=Crear y continuar')
     pg.wait_for_selector('#f-c'); pg.select_option('#f-c', 'desayuno'); pg.fill('#f-m', '25000')
     print('CMP:', pg.inner_text('.cmp'))
