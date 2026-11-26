@@ -3,7 +3,7 @@ import { useApp } from '../lib/store'
 import { msgError, sb } from '../lib/sb'
 import { subirSoporte } from '../lib/img'
 import type { Consignacion, Legalizacion, Reporte, Saldo, Traspaso } from '../lib/types'
-import { codigo, textoResultado, disponible, normOrden, numBase, ORDEN_OK, durTxt, fdate, fhora, fmt, limiteDe, miles, neto, num, recibido, retencionEsperada, topeDe, ymd } from '../lib/util'
+import { codigo, textoResultado, disponible, normOrden, numBase, ORDEN_OK, durTxt, fdate, fhora, fmt, limiteDe, miles, neto, num, recibido, retencionEsperada, sumaDias, fdia, topeDe, ymd } from '../lib/util'
 import { Archivo, Chip, Comparacion, Subir, Tag, Vacio } from '../ui'
 
 type Pantalla = 'home' | 'orden' | 'nueva' | 'form' | 'ok' | 'mis' | 'nov' | 'noresp'
@@ -113,7 +113,7 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
   function nuevoReporte(num: string) {
     const o = app.orden(num)
     if (o && o.responsable !== uid) { setBloq(num); ir('noresp'); return }
-    setD({ orden: num, fecha: ymd(), concepto: '', subtipo: '', descripcion: '', noches: '1', monto: '', fe: null, soporte: null, rut: null, anexo: null, ret: null, retV: '', retN: '', obs: '' })
+    setD({ orden: num, fecha: '', concepto: '', subtipo: '', descripcion: '', noches: '1', monto: '', fe: null, soporte: null, rut: null, anexo: null, ret: null, retV: '', retN: '', obs: '' })
     ir('form')
   }
   function corregir(r: Reporte) {
@@ -334,7 +334,7 @@ function NuevaOrden({ x }: { x: X }) {
     setBusy(false)
     if (error) return setErr(msgError(error))
     await app.recargar(['ordenes']); toast(`Orden ${n} creada`)
-    setD({ orden: n, fecha: ymd(), concepto: '', subtipo: '', descripcion: '', noches: '1', monto: '', fe: null, soporte: null, rut: null, anexo: null, ret: null, retV: '', retN: '', obs: '' })
+    setD({ orden: n, fecha: '', concepto: '', subtipo: '', descripcion: '', noches: '1', monto: '', fe: null, soporte: null, rut: null, anexo: null, ret: null, retV: '', retN: '', obs: '' })
     ir('form', true)
   }
   return <>
@@ -389,7 +389,7 @@ function Formulario({ x, d }: { x: X, d: Borrador }) {
   const editando = f.editId ? reps.find(r => r.id === f.editId) : undefined
   const disp = s ? disponible(s) + (editando ? editando.monto : 0) : 0
   const set = (k: keyof Borrador, v: unknown) => setF(x => ({ ...x, [k]: v }))
-  const tarde = config ? new Date() > limiteDe(f.fecha, config) : false
+  const tarde = config && f.fecha ? new Date() > limiteDe(f.fecha, config) : false
 
   const ret = c ? retencionEsperada(c, monto) : { aplica: false, factura: 0, valor: 0 }
 
@@ -442,8 +442,11 @@ function Formulario({ x, d }: { x: X, d: Borrador }) {
     {f.motivo && <div className="banner"><b>Devuelto por el administrador</b>{f.motivo}</div>}
     <div className="ochip"><span><b>{o.num}</b><br />{o.cliente}</span><span>{app.ciudad(o.ciudad_id)}</span></div>
     {plazo}
-    <label className="f" htmlFor="f-g">Fecha del gasto</label>
+    <label className="f" htmlFor="f-g">¿Qué día fue el gasto?</label>
+    <div className="chips fch">{[['Hoy', 0], ['Ayer', 1], ['Anteayer', 2]].map(([l, n]) => { const v = sumaDias(hoy, -(n as number))
+      return <button type="button" key={l} aria-pressed={f.fecha === v} onClick={() => set('fecha', v)}>{l}</button> })}</div>
     <input id="f-g" type="date" className="inp" max={hoy} value={f.fecha} onChange={e => set('fecha', e.target.value)} />
+    <p className="hint">{f.fecha ? <>Gasto del <b>{fdia(f.fecha)}</b>. Debe coincidir con la fecha de la factura.</> : 'Usa la fecha que aparece en la factura, no la de hoy si la estás cargando después.'}</p>
     {tarde && <p className="hint warn">Gasto fuera del plazo de reporte: quedará como extemporáneo.</p>}
     <label className="f" htmlFor="f-c">Concepto</label>
     <select id="f-c" className="inp" value={f.concepto} onChange={e => setF(x => ({ ...x, concepto: e.target.value, subtipo: '', descripcion: '' }))}>

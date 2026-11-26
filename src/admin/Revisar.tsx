@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useApp } from '../lib/store'
 import { msgError, sb } from '../lib/sb'
 import type { Concepto, Reporte, Saldo } from '../lib/types'
-import { codigo, disponible, fdate, fhora, fmt, limiteDe, recibido, retencionEsperada, topeDe } from '../lib/util'
+import { codigo, disponible, fdate, fhora, fmt, limiteDe, recibido, retencionEsperada, topeDe, fdia, diasEntre, ymd } from '../lib/util'
 import { Cargando, Comparacion, Soporte, Tag, Vacio } from '../ui'
 
 /** La retención reportada difiere de la esperada en más de $1.000 */
@@ -17,10 +17,10 @@ export default function Revisar({ tick, onCambio }: { tick: number; onCambio: ()
 
   const cargar = useCallback(async () => {
     const [r, s] = await Promise.all([
-      sb.from('reportes').select('*').eq('estado', 'pendiente').order('enviado_at'),
+      sb.from('reportes').select('*').eq('estado', 'pendiente').order('fecha_gasto').order('enviado_at'),
       sb.from('saldos').select('*')
     ])
-    setLista(r.data || []); setSaldos(s.data || [])
+    setLista((r.data || []).sort((x, y) => x.fecha_gasto.localeCompare(y.fecha_gasto) || x.enviado_at.localeCompare(y.enviado_at))); setSaldos(s.data || [])
   }, [])
   useEffect(() => { cargar() }, [cargar, tick])
 
@@ -33,11 +33,14 @@ export default function Revisar({ tick, onCambio }: { tick: number; onCambio: ()
 
   return <>
     <div className="tool">
-      <span className="note">Del más antiguo al más reciente. Revisa soporte, RUT y tope antes de decidir.</span>
+      <span className="note">Agrupados por el día del gasto, del más antiguo al más reciente. Revisa soporte, RUT y tope antes de decidir.</span>
       <input className="inp" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar orden, cliente o técnico" aria-label="Buscar" />
     </div>
     {!lista ? <Cargando /> : !lista.filter(filtro).length ? <Vacio>No hay reportes por revisar.</Vacio> :
-      lista.filter(filtro).map(r => <Tarjeta key={r.id} r={r} saldo={saldos.find(s => s.orden === r.orden && s.tecnico === r.tecnico)} onHecho={hecho} />)}
+      lista.filter(filtro).map((r, i, a) => <div key={r.id}>
+        {(i === 0 || a[i - 1].fecha_gasto !== r.fecha_gasto) && <h4 className="gdia">Gastos del {fdia(r.fecha_gasto)} <span>{a.filter(x => x.fecha_gasto === r.fecha_gasto).length}</span></h4>}
+        <Tarjeta r={r} saldo={saldos.find(s => s.orden === r.orden && s.tecnico === r.tecnico)} onHecho={hecho} />
+      </div>)}
   </>
 }
 
@@ -62,6 +65,17 @@ function Tarjeta({ r, saldo, onHecho }: { r: Reporte; saldo?: Saldo; onHecho: ()
     onHecho()
   }
 
+  const [fx, setFx] = useState<string | null>(null)
+  const dd = diasEntre(r.fecha_gasto, r.enviado_at)
+  async function corregirFecha() {
+    if (!fx) return
+    setBusy(true); setErr('')
+    const { error } = await sb.rpc('corregir_fecha_gasto', { p_id: r.id, p_fecha: fx })
+    setBusy(false)
+    if (error) return setErr(msgError(error))
+    app.toast(`${codigo(r.id)}: fecha del gasto cambiada al ${fdate(fx)}`); setFx(null); onHecho()
+  }
+
   return (
     <article className="rc">
       <div className="thumbs">
@@ -72,7 +86,16 @@ function Tarjeta({ r, saldo, onHecho }: { r: Reporte; saldo?: Saldo; onHecho: ()
       <div>
         <div className="rtop"><b>{c?.nombre}{det ? ' · ' + det : ''}</b><span className="amt">{fmt(r.monto)}</span></div>
         <div className="meta"><b className="ink">{r.orden}</b> · {o?.cliente} · {app.ciudad(o?.ciudad_id)}</div>
-        <div className="meta">{app.nombre(r.tecnico)} · gasto del {fdate(r.fecha_gasto)} · enviado {fdate(r.enviado_at)} {fhora(r.enviado_at)} · {codigo(r.id)}
+        <div className="fbox">
+          <div className="fgasto"><small>Fecha del gasto</small><b>{fdia(r.fecha_gasto)}</b>
+            <button className="link" onClick={() => setFx(fx === null ? r.fecha_gasto : null)}>{fx === null ? 'Corregir' : 'Cancelar'}</button></div>
+          <div className={'fcarga' + (dd > 1 ? ' tarde' : '')}><small>Cargado en la app</small><b>{fdate(r.enviado_at)} · {fhora(r.enviado_at)}</b>
+            <span>{dd <= 0 ? 'el mismo día' : dd === 1 ? '1 día después' : `${dd} días después`}</span></div>
+        </div>
+        {fx !== null && <div className="fixf"><input type="date" className="inp" max={ymd()} value={fx} onChange={e => setFx(e.target.value)} />
+          <button className="btn sm pri" disabled={!fx || fx === r.fecha_gasto || busy} onClick={corregirFecha}>Guardar fecha</button>
+          <span className="note">Úsalo si la fecha no coincide con la de la factura. Queda en el historial.</span></div>}
+        <div className="meta">{app.nombre(r.tecnico)} · {codigo(r.id)}
           {r.reenvios > 0 && <> · <b className="warn">Reenviado ({r.reenvios})</b></>}
           {r.extemporaneo && app.config && <> <Tag k="w">Extemporáneo · límite {fhora(limiteDe(r.fecha_gasto, app.config))}</Tag></>}</div>
         {saldo && <div className="meta">Viáticos de {app.nombre(r.tecnico).split(' ')[0]} en esta orden: recibido {fmt(recibido(saldo))} · reportado {fmt(saldo.reportado)} · disponible{' '}

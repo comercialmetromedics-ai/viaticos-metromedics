@@ -68,3 +68,8 @@ export function retencionEsperada(k: { pide_retencion: boolean; retencion_pct: n
   if (k.retencion_base != null && factura < k.retencion_base) return { aplica: false, factura, valor: 0 }
   return { aplica: true, factura, valor: Math.round(factura * p) }
 }
+
+/** "martes 24 de noviembre" */
+export const fdia = (s: string) => asDate(s).toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TZ })
+/** Días calendario entre la fecha del gasto y el momento en que se cargó */
+export const diasEntre = (fecha: string, ts: string) => Math.round((asDate(ymd(new Date(ts))).getTime() - asDate(fecha).getTime()) / 86400000)
