@@ -63,6 +63,14 @@ npm run dev
 
 Pruebas: `test/flujo.sql` prueba reglas y permisos en un PostgreSQL local (`test/supabase_stub.sql` simula Supabase); `test/ui_test.py` recorre la interfaz con datos simulados.
 
+## Legalización y estados de cuenta
+
+- **Legalizar:** en *Viáticos entregados*, cada fila abierta (técnico + orden) tiene el botón **Legalizar** cuando no quedan reportes por revisar. Muestra recibido, aprobado, no aprobado y el resultado (reintegra / reembolsar); se registra cómo se saldó y opcionalmente el comprobante. Los rechazados sin corregir pasan como **no aprobados**. Todo lo legalizado queda bloqueado y el saldo vuelve a cero.
+- **Legalizaciones:** historial con acta imprimible (PDF) y descarga a Excel.
+- **Estados de cuenta:** resumen general (quién debe reintegrar, a quién reembolsar) y movimientos por técnico con saldo acumulado; descargables e imprimibles.
+- **Órdenes:** historial de visitas/legalizaciones por orden; archivar las que ya no se usan.
+- Base de datos: si el proyecto ya tenía `schema.sql`, ejecutar una vez `supabase/migracion_002_legalizacion.sql`. En un proyecto nuevo basta `schema.sql` (ya la incluye).
+
 ## Pendiente (fase 2)
 
 - Notificaciones push con la app cerrada (hoy los avisos del plazo salen con la app abierta y como notificación del sistema si el técnico las activa).

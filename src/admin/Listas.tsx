@@ -2,18 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useApp } from '../lib/store'
 import { sb } from '../lib/sb'
 import type { Consignacion, Reporte } from '../lib/types'
-import { codigo, fdate, fmt, ymd } from '../lib/util'
+import { codigo, descargarCSV, fdate, fmt, ymd } from '../lib/util'
 import { Cargando, Soporte, Tag, Vacio } from '../ui'
-
-function descargarCSV(nombre: string, filas: (string | number | null)[][]) {
-  const csv = filas.map(f => f.map(v => {
-    const s = v == null ? '' : String(v)
-    return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-  }).join(';')).join('\r\n')
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }))
-  a.download = nombre; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000)
-}
 
 export function Aprobados({ tick }: { tick: number }) {
   const app = useApp()

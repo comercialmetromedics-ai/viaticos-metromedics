@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useApp } from '../lib/store'
 import { msgError, sb } from '../lib/sb'
 import { subirSoporte } from '../lib/img'
-import type { Consignacion, Reporte, Saldo, Traspaso } from '../lib/types'
-import { codigo, disponible, normOrden, numBase, ORDEN_OK, durTxt, fdate, fhora, fmt, limiteDe, miles, neto, num, recibido, topeDe, ymd } from '../lib/util'
+import type { Consignacion, Legalizacion, Reporte, Saldo, Traspaso } from '../lib/types'
+import { codigo, textoResultado, disponible, normOrden, numBase, ORDEN_OK, durTxt, fdate, fhora, fmt, limiteDe, miles, neto, num, recibido, topeDe, ymd } from '../lib/util'
 import { Archivo, Chip, Comparacion, Subir, Tag, Vacio } from '../ui'
 
 type Pantalla = 'home' | 'orden' | 'nueva' | 'form' | 'ok' | 'mis' | 'nov' | 'noresp'
@@ -43,6 +43,7 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
   const [cons, setCons] = useState<Consignacion[]>([])
   const [tras, setTras] = useState<Traspaso[]>([])
   const [habil, setHabil] = useState(false)
+  const [legs, setLegs] = useState<Legalizacion[]>([])
   const [q, setQ] = useState('')
   const [d, setD] = useState<Borrador | null>(null)
   const [ultimo, setUltimo] = useState<Reporte | null>(null)
@@ -50,15 +51,16 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
   const [now, setNow] = useState(() => new Date())
 
   const cargar = useCallback(async () => {
-    const [r, s, c, t, h] = await Promise.all([
+    const [r, s, c, t, h, lg] = await Promise.all([
       sb.from('reportes').select('*').eq('tecnico', uid).order('enviado_at', { ascending: false }).limit(300),
       sb.from('saldos').select('*').eq('tecnico', uid),
       sb.from('consignaciones').select('*').eq('tecnico', uid).order('fecha'),
       sb.from('traspasos').select('*').or(`de.eq.${uid},a.eq.${uid}`).order('fecha'),
-      sb.from('habilitaciones').select('fecha').eq('tecnico', uid).eq('fecha', ymd())
+      sb.from('habilitaciones').select('fecha').eq('tecnico', uid).eq('fecha', ymd()),
+      sb.from('legalizaciones').select('*').eq('tecnico', uid).order('fecha', { ascending: false }).limit(5)
     ])
     if (r.data) setReps(r.data); if (s.data) setSaldos(s.data); if (c.data) setCons(c.data); if (t.data) setTras(t.data)
-    setHabil(!!h.data?.length)
+    setHabil(!!h.data?.length); if (lg.data) setLegs(lg.data)
   }, [uid])
 
   useEffect(() => {
@@ -71,6 +73,7 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'consignaciones' }, () => cargar())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'traspasos' }, () => cargar())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'legalizaciones' }, () => cargar())
       .subscribe()
     const t = setInterval(() => setNow(new Date()), 30000)
     const vis = () => { if (document.visibilityState === 'visible') { setNow(new Date()); cargar() } }
@@ -102,8 +105,8 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
     : <div className="dl bad"><span className="clk">Cerrado</span><p>El plazo de hoy cerró a las {fhora(limite)}{' '}·{' '}
       {config!.politica === 'bloquear' && !habil ? 'Para reportar, pide habilitación al administrador.' : habil ? 'Estás habilitado hoy; quedará como extemporáneo.' : 'Lo que reportes ahora queda como extemporáneo.'}</p></div>)
 
-  const novedades = reps.filter(r => r.estado === 'rechazado')
-  const misSaldos = saldos.filter(s => recibido(s) > 0 || s.es_responsable).sort((a, b) => b.orden.localeCompare(a.orden))
+  const novedades = reps.filter(r => r.estado === 'rechazado' && r.legalizacion_id == null)
+  const misSaldos = saldos.filter(s => (recibido(s) > 0 || s.reportado > 0 || s.es_responsable) && !app.orden(s.orden)?.archivada).sort((a, b) => b.orden.localeCompare(a.orden))
 
   function nuevoReporte(num: string) {
     const o = app.orden(num)
@@ -155,7 +158,7 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
   function Home() {
     const mes = hoy.slice(0, 7)
     const delMes = reps.filter(r => r.fecha_gasto.startsWith(mes))
-    const recientes = [...new Set([...reps.map(r => r.orden), ...ordenes.filter(o => o.responsable === uid).map(o => o.num)])].slice(0, 5)
+    const recientes = [...new Set([...reps.map(r => r.orden), ...ordenes.filter(o => o.responsable === uid).map(o => o.num)])].filter(n => !app.orden(n)?.archivada).slice(0, 5)
     const notifOff = 'Notification' in window && Notification.permission === 'default'
     return <>
       <h2>Hola, {yo!.nombre.split(' ')[0]}</h2>
@@ -167,7 +170,7 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
       {misSaldos.length > 0 && <h3>Mi saldo de viáticos</h3>}
       {misSaldos.map(s => {
         const o = app.orden(s.orden), disp = disponible(s), n = neto(s)
-        const entregas = tras.filter(t => t.orden === s.orden && t.de === uid)
+        const entregas = tras.filter(t => t.orden === s.orden && t.de === uid && t.legalizacion_de == null)
         return (
           <div className="bal" key={s.orden}>
             <div className="balh"><b>{s.orden}</b><span>{s.es_responsable ? <Tag k="ok">Responsable</Tag> : <Tag>Entregada</Tag>} {app.ciudad(o?.ciudad_id)}</span></div>
@@ -178,14 +181,17 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
               <div className={disp < 0 ? 'neg' : 'pos'}><small>Disponible</small><b>{fmt(disp)}</b></div>
             </div>
             <p className="hint">{[
-              ...cons.filter(c => c.orden === s.orden).map(c => `Consignación ${fdate(c.fecha)} ${fmt(c.monto)}`),
-              ...tras.filter(t => t.orden === s.orden && t.a === uid).map(t => `Recibido de ${app.nombre(t.de).split(' ')[0]} ${fdate(t.fecha)} ${fmt(t.monto)}`)
+              ...cons.filter(c => c.orden === s.orden && c.legalizacion_id == null).map(c => `Consignación ${fdate(c.fecha)} ${fmt(c.monto)}`),
+              ...tras.filter(t => t.orden === s.orden && t.a === uid && t.legalizacion_a == null).map(t => `Recibido de ${app.nombre(t.de).split(' ')[0]} ${fdate(t.fecha)} ${fmt(t.monto)}`)
             ].join(' · ')}</p>
             {s.es_responsable && disp > 0 && <p className="hint">El disponible es dinero de la empresa para gastos de esta orden; lo que no se use o no se apruebe se devuelve al legalizar.</p>}
             {entregas.map(t => <p key={t.id} className="hint ink">Entregaste la responsabilidad a <b>{app.nombre(t.a)}</b> el {fdate(t.fecha)} con {fmt(t.monto)}. Las consignaciones nuevas ya no te corresponden.</p>)}
           </div>
         )
       })}
+      {legs.length > 0 && <h3>Mis legalizaciones</h3>}
+      {legs.slice(0, 3).map(l => <div className="row" key={l.id}><span><b>{l.orden}</b><small>Legalizado el {fdate(l.fecha)} · aprobado {fmt(l.aprobado)}{l.no_aprobado ? ` · no aprobado ${fmt(l.no_aprobado)}` : ''}</small></span>
+        <span className="r"><Tag k={l.resultado > 0 ? 'bad' : l.resultado < 0 ? 'ok' : 'n'}>{l.resultado > 0 ? `Reintegraste ${fmt(l.resultado)}` : l.resultado < 0 ? `Te reembolsan ${fmt(-l.resultado)}` : textoResultado(0)}</Tag></span></div>)}
       {recientes.length > 0 && <h3>Órdenes recientes · toca para reportar</h3>}
       {recientes.map(n => { const o = app.orden(n); return o && (
         <button className="row" key={n} onClick={() => nuevoReporte(n)}>
@@ -202,7 +208,7 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
 
   function BuscarOrden() {
     const Q = normOrden(q), N = numBase(q)
-    const lista = ordenes.filter(o => !Q || o.num.includes(Q) || (N && numBase(o.num) === N) || o.cliente.toUpperCase().includes(q.trim().toUpperCase())).slice(0, 8)
+    const lista = ordenes.filter(o => !o.archivada).filter(o => !Q || o.num.includes(Q) || (N && numBase(o.num) === N) || o.cliente.toUpperCase().includes(q.trim().toUpperCase())).slice(0, 8)
     const existe = ordenes.some(o => o.num === Q || (N && numBase(o.num) === N))
     return <>
       <h2>¿A qué orden de servicio?</h2>
@@ -321,7 +327,7 @@ function MisReportes({ x }: { x: X }) {
       <button className="row col" key={r.id} onClick={() => setVer(ver === r.id ? null : r.id)}>
         <div className="rowline">
           <span><b>{app.concepto(r.concepto_id)?.nombre}</b>{r.subtipo || r.descripcion ? ' · ' + (r.subtipo || r.descripcion) : ''}
-            <small>{r.orden} · {fdate(r.fecha_gasto)} {r.extemporaneo && <Tag k="w">Extemporáneo</Tag>}</small>
+            <small>{r.orden} · {fdate(r.fecha_gasto)} {r.extemporaneo && <Tag k="w">Extemporáneo</Tag>} {r.legalizacion_id && <Tag>{r.estado === 'rechazado' ? 'Legalizado · no aprobado' : 'Legalizado'}</Tag>}</small>
             {r.estado === 'parcial' && <small>Aprobado {fmt(r.aprobado)} de {fmt(r.monto)}</small>}</span>
           <span className="r"><b>{fmt(r.monto)}</b><br /><Chip estado={r.estado} /></span>
         </div>

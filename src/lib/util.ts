@@ -45,3 +45,17 @@ export const disponible = (s: Saldo) => neto(s) - s.reportado
 export const recibido = (s: Saldo) => s.consignado + s.traspaso_recibido
 
 export const ESTADOS: Record<string, string> = { pendiente: 'Por revisar', aprobado: 'Aprobado', parcial: 'Aprobado hasta tope', rechazado: 'Rechazado' }
+
+export function descargarCSV(nombre: string, filas: (string | number | null)[][]) {
+  const csv = filas.map(f => f.map(v => {
+    const s = v == null ? '' : String(v)
+    return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  }).join(';')).join('\r\n')
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }))
+  a.download = nombre; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000)
+}
+
+/** Texto del resultado de una legalización (positivo: el técnico reintegró; negativo: la empresa reembolsó) */
+export const textoResultado = (r: number, pasado = true) =>
+  r > 0 ? `${pasado ? 'Reintegró' : 'Reintegra'} ${fmt(r)}` : r < 0 ? `${pasado ? 'Reembolsado' : 'Reembolsar'} ${fmt(-r)}` : 'Cuadrado'

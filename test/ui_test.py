@@ -17,18 +17,23 @@ DB = {
     {'id': 'transporte', 'nombre': 'Desplazamiento', 'unidad': 'por trayecto', 'subtipos': ['Taxi', 'InDrive'], 'requiere_descripcion': False, 'por_noche': False, 'activo': True, 'orden': 5}],
   'topes': [{'concepto_id': 'desayuno', 'ciudad_id': 4, 'valor': 18000}, {'concepto_id': 'hotel', 'ciudad_id': 4, 'valor': 160000}, {'concepto_id': 'desayuno', 'ciudad_id': 1, 'valor': 20000}],
   'config': [{'id': 1, 'lim_lv': '20:00:00', 'lim_sab': '11:00:00', 'lim_dom': '20:00:00', 'avisos': [60, 15], 'politica': 'marcar', 'zona': 'America/Bogota'}],
-  'ordenes': [{'num': 'MMCS-1241', 'cliente': 'Lácteos del Norte S.A.', 'ciudad_id': 4, 'creada_por': C, 'responsable': C, 'created_at': '2026-11-24T10:00:00Z'}],
+  'ordenes': [{'num': 'MMCS-1241', 'cliente': 'Lácteos del Norte S.A.', 'ciudad_id': 4, 'creada_por': C, 'responsable': C, 'created_at': '2026-11-24T10:00:00Z', 'archivada': False},
+    {'num': '4120-CAL-MMCS', 'cliente': 'Clínica Norte', 'ciudad_id': 1, 'creada_por': C, 'responsable': C, 'created_at': '2026-04-02T10:00:00Z', 'archivada': False}],
   'reportes': [
     {'id': 1, 'orden': 'MMCS-1241', 'tecnico': C, 'fecha_gasto': hoy, 'enviado_at': hoy + 'T13:00:00Z', 'concepto_id': 'desayuno', 'subtipo': None, 'descripcion': None, 'noches': 1, 'monto': 25000,
-     'factura_electronica': True, 'soporte_path': C + '/a.jpg', 'rut_path': None, 'observaciones': None, 'estado': 'pendiente', 'aprobado': None, 'motivo': None, 'reenvios': 0, 'extemporaneo': False, 'revisado_por': None, 'revisado_at': None},
+     'factura_electronica': True, 'soporte_path': C + '/a.jpg', 'rut_path': None, 'observaciones': None, 'estado': 'pendiente', 'aprobado': None, 'motivo': None, 'reenvios': 0, 'extemporaneo': False, 'revisado_por': None, 'revisado_at': None, 'legalizacion_id': None},
     {'id': 2, 'orden': 'MMCS-1241', 'tecnico': C, 'fecha_gasto': hoy, 'enviado_at': hoy + 'T14:00:00Z', 'concepto_id': 'transporte', 'subtipo': 'Taxi', 'descripcion': None, 'noches': 1, 'monto': 22000,
-     'factura_electronica': False, 'soporte_path': C + '/b.jpg', 'rut_path': C + '/r.jpg', 'observaciones': None, 'estado': 'rechazado', 'aprobado': None, 'motivo': 'Imagen ilegible', 'reenvios': 0, 'extemporaneo': True, 'revisado_por': A, 'revisado_at': hoy + 'T15:00:00Z'},
+     'factura_electronica': False, 'soporte_path': C + '/b.jpg', 'rut_path': C + '/r.jpg', 'observaciones': None, 'estado': 'rechazado', 'aprobado': None, 'motivo': 'Imagen ilegible', 'reenvios': 0, 'extemporaneo': True, 'revisado_por': A, 'revisado_at': hoy + 'T15:00:00Z', 'legalizacion_id': None},
     {'id': 3, 'orden': 'MMCS-1241', 'tecnico': C, 'fecha_gasto': hoy, 'enviado_at': hoy + 'T12:00:00Z', 'concepto_id': 'hotel', 'subtipo': None, 'descripcion': None, 'noches': 2, 'monto': 300000,
-     'factura_electronica': True, 'soporte_path': C + '/c.pdf', 'rut_path': None, 'observaciones': None, 'estado': 'aprobado', 'aprobado': 300000, 'motivo': None, 'reenvios': 0, 'extemporaneo': False, 'revisado_por': A, 'revisado_at': hoy + 'T15:00:00Z'}],
+     'factura_electronica': True, 'soporte_path': C + '/c.pdf', 'rut_path': None, 'observaciones': None, 'estado': 'aprobado', 'aprobado': 300000, 'motivo': None, 'reenvios': 0, 'extemporaneo': False, 'revisado_por': A, 'revisado_at': hoy + 'T15:00:00Z', 'legalizacion_id': None}],
   'saldos': [{'orden': 'MMCS-1241', 'tecnico': C, 'consignado': 1100000, 'traspaso_recibido': 0, 'traspaso_entregado': 0, 'reportado': 347000, 'aprobado': 300000, 'por_revisar': 25000, 'rechazado': 22000, 'es_responsable': True}],
-  'consignaciones': [{'id': 1, 'orden': 'MMCS-1241', 'tecnico': C, 'fecha': hoy, 'monto': 500000, 'medio': 'Transferencia', 'nota': 'Día 1', 'created_at': hoy + 'T10:00:00Z'},
-                     {'id': 2, 'orden': 'MMCS-1241', 'tecnico': C, 'fecha': hoy, 'monto': 600000, 'medio': 'Transferencia', 'nota': None, 'created_at': hoy + 'T11:00:00Z'}],
-  'traspasos': [], 'habilitaciones': [], 'historial': []}
+  'consignaciones': [{'id': 1, 'orden': 'MMCS-1241', 'tecnico': C, 'fecha': hoy, 'monto': 500000, 'medio': 'Transferencia', 'nota': 'Día 1', 'created_at': hoy + 'T10:00:00Z', 'legalizacion_id': None},
+                     {'id': 2, 'orden': 'MMCS-1241', 'tecnico': C, 'fecha': hoy, 'monto': 600000, 'medio': 'Transferencia', 'nota': None, 'created_at': hoy + 'T11:00:00Z', 'legalizacion_id': None},
+    {'id': 3, 'orden': '4120-CAL-MMCS', 'tecnico': C, 'fecha': '2026-04-03', 'monto': 300000, 'medio': 'Efectivo', 'nota': None, 'created_at': '2026-04-03T10:00:00Z', 'legalizacion_id': 7}],
+  'traspasos': [], 'habilitaciones': [], 'historial': [],
+  'legalizaciones': [{'id': 7, 'orden': '4120-CAL-MMCS', 'tecnico': C, 'consignado': 300000, 'traspaso_recibido': 0, 'traspaso_entregado': 0, 'reportado': 250000, 'aprobado': 230000,
+    'no_aprobado': 20000, 'resultado': 70000, 'n_reportes': 4, 'desde': '2026-04-03', 'hasta': '2026-04-06', 'fecha': '2026-04-08', 'medio': 'Efectivo', 'nota': 'Devolvió en caja',
+    'comprobante_path': None, 'creado_por': A, 'created_at': '2026-04-08T10:00:00Z'}]}
 calls = []
 
 def handler(route, req):
@@ -84,7 +89,7 @@ with sync_playwright() as p:
     pg.goto('http://localhost:4173/'); pg.wait_for_selector('text=Hola, Carlos', timeout=8000)
     pg.screenshot(path='/tmp/r1.png', full_page=True)
     assert 'Mi saldo de viáticos' in pg.content()
-    pg.click('text=+ Nuevo reporte de viáticos'); pg.fill('#oq', '4120 cal mmcs'); pg.click('text=Crear orden')
+    pg.click('text=+ Nuevo reporte de viáticos'); pg.fill('#oq', '4130 cal mmcs'); pg.click('text=Crear orden')
     pg.fill('#no-c', 'Clínica Prueba S.A.S.'); pg.select_option('#no-ci', '1'); pg.click('text=Crear y continuar')
     pg.wait_for_selector('#f-c'); pg.select_option('#f-c', 'desayuno'); pg.fill('#f-m', '25000')
     print('CMP:', pg.inner_text('.cmp'))
@@ -110,6 +115,15 @@ with sync_playwright() as p:
     for t, f in [('Aprobados', 'a2'), ('Rechazados', 'a3'), ('Viáticos entregados', 'a4'), ('Indicadores', 'a5'), ('Ajustes', 'a6'), ('Usuarios', 'a7')]:
         pg.click(f'.tabs button:has-text("{t}")'); pg.wait_for_timeout(600); pg.screenshot(path=f'/tmp/{f}.png', full_page=True)
     pg.click('.tabs button:has-text("Viáticos entregados")'); pg.fill('#c-m', '200000'); pg.click('button:has-text("Registrar consignación")'); pg.wait_for_timeout(300)
+    # legalización
+    pg.click('.tabs button:has-text("Viáticos entregados")'); pg.wait_for_timeout(500)
+    rows = pg.locator('button:has-text("Legalizar")'); print('botones legalizar', rows.count())
+    pg.click('.tabs button:has-text("Rechazados")'); pg.wait_for_timeout(200)
+    pg.click('.tabs button:has-text("Legalizaciones")'); pg.wait_for_timeout(600); pg.click('text=Ver acta'); pg.wait_for_timeout(600)
+    pg.screenshot(path='/tmp/a8.png', full_page=True); pg.click('.acta-bar >> text=Cerrar')
+    pg.click('.tabs button:has-text("Estados de cuenta")'); pg.wait_for_timeout(600); pg.screenshot(path='/tmp/a9.png', full_page=True)
+    pg.click('text=Estado de cuenta por técnico'); pg.wait_for_timeout(800); pg.screenshot(path='/tmp/a10.png', full_page=True)
+    pg.click('.tabs button:has-text("Órdenes")'); pg.wait_for_timeout(500); pg.click('text=Historial >> nth=0'); pg.wait_for_timeout(300); pg.screenshot(path='/tmp/a11.png', full_page=True)
     pg.click('text=Vista técnico'); pg.wait_for_selector('text=Panel admin')
     ctx.close()
 print('RPC/POST:', [c for c in calls if c[0] in ('POST', 'PATCH')][-4:])
