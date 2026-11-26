@@ -3,7 +3,7 @@ export interface Perfil { id: string; nombre: string; email: string | null; rol:
 export interface Ciudad { id: number; nombre: string; orden: number; activo: boolean }
 export interface Concepto {
   id: string; nombre: string; unidad: string; subtipos: string[]
-  requiere_descripcion: boolean; por_noche: boolean; activo: boolean; orden: number
+  requiere_descripcion: boolean; por_noche: boolean; activo: boolean; orden: number; tope_base: number | null
 }
 export interface Tope { concepto_id: string; ciudad_id: number; valor: number | null }
 export interface Config { id: number; lim_lv: string; lim_sab: string; lim_dom: string; avisos: number[]; politica: 'marcar' | 'bloquear'; zona: string }

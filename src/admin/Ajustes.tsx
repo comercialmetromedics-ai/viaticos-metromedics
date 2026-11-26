@@ -3,14 +3,19 @@ import { useApp } from '../lib/store'
 import { msgError, sb } from '../lib/sb'
 import { fhora, limiteDe, miles, num, ymd } from '../lib/util'
 
+const confirmar = (t: string) => window.confirm(t)
+
 export default function Ajustes() {
   const app = useApp()
   const { config, ciudades, conceptos, topes, perfiles, toast, recargar } = app
   const [habil, setHabil] = useState<string[]>([])
   const [hT, setHT] = useState('')
   const [nc, setNc] = useState('')
+  const [modoNc, setModoNc] = useState<'base' | 'propio'>('base')
+  const [tNc, setTNc] = useState<Record<string, string>>({})
   const [nk, setNk] = useState({ nombre: '', unidad: 'por gasto', subtipos: '', desc: false, noche: false })
   const [err, setErr] = useState('')
+  const [ver, setVer] = useState(0)
   const hoy = ymd()
 
   useEffect(() => { sb.from('habilitaciones').select('tecnico').eq('fecha', hoy).then(r => setHabil((r.data || []).map(x => x.tecnico))) }, [hoy])
@@ -33,11 +38,28 @@ export default function Ajustes() {
     if (error) return toast(msgError(error), 'error')
     setHabil(h => [...new Set([...h, t])]); toast(`${app.nombre(t)} puede reportar hoy después del límite`)
   }
+  async function guardarBase(id: string, v: string) {
+    const { error } = await sb.from('conceptos').update({ tope_base: num(v) || null }).eq('id', id)
+    if (error) return toast(msgError(error), 'error')
+    await recargar(['conceptos']); toast('Tope base actualizado')
+  }
+  async function aplicarBase(c: { id: number; nombre: string }) {
+    if (!confirmar(`¿Reemplazar los topes de ${c.nombre} por los topes base?`)) return
+    const { error } = await sb.rpc('aplicar_topes_base', { p_ciudad: c.id })
+    if (error) return toast(msgError(error), 'error')
+    setVer(v => v + 1); await recargar(['topes']); toast(`${c.nombre} quedó con los topes base`)
+  }
+  function abrirNc(modo: 'base' | 'propio') {
+    setModoNc(modo)
+    if (modo === 'propio') setTNc(Object.fromEntries(conceptos.map(k => [k.id, k.tope_base != null ? miles(k.tope_base) : ''])))
+  }
   async function agregarCiudad() {
     if (!nc.trim()) return setErr('Escribe el nombre de la ciudad.')
-    const { error } = await sb.from('ciudades').insert({ nombre: nc.trim(), orden: 50 })
+    const p_topes = modoNc === 'base' ? null : Object.fromEntries(conceptos.map(k => [k.id, num(tNc[k.id] || '') || null]))
+    const { error } = await sb.rpc('crear_ciudad', { p_nombre: nc.trim(), p_topes })
     if (error) return setErr(msgError(error))
-    setNc(''); setErr(''); await recargar(['ciudades']); toast('Ciudad agregada')
+    setNc(''); setErr(''); setModoNc('base'); await recargar(['ciudades', 'topes'])
+    toast(modoNc === 'base' ? 'Ciudad agregada con los topes base' : 'Ciudad agregada con sus topes')
   }
   async function agregarConcepto() {
     if (!nk.nombre.trim()) return setErr('Escribe el nombre del concepto.')
@@ -79,19 +101,29 @@ export default function Ajustes() {
     </div>
 
     <h3>Topes de presupuesto</h3>
-    <p className="note">Por concepto y ciudad. Vacío = sin tope (se revisa caso a caso). Se guarda al salir de cada casilla y aplica de inmediato a lo que está por revisar.</p>
-    <div className="scroll"><table className="mat"><thead><tr><th>Concepto</th><th>Unidad</th>{ciuAct.map(c => <th key={c.id} className="n">{c.nombre}</th>)}<th></th></tr></thead>
+    <p className="note">Por concepto y ciudad. Vacío = sin tope (se revisa caso a caso). Se guarda al salir de cada casilla y aplica de inmediato a lo que está por revisar.
+      La columna <b>Topes base</b> es la referencia que se copia a las ciudades nuevas; cambiarla no modifica las ciudades ya creadas (usa <i>Aplicar base</i> en una ciudad para copiarla).</p>
+    <div className="scroll"><table className="mat"><thead><tr><th>Concepto</th><th>Unidad</th><th className="n base">Topes base</th>{ciuAct.map(c => <th key={c.id} className="n">{c.nombre}<div><button className="link" onClick={() => aplicarBase(c)}>Aplicar base</button></div></th>)}<th></th></tr></thead>
       <tbody>{conceptos.map(k => <tr key={k.id} className={k.activo ? '' : 'off'}>
         <td><b>{k.nombre}</b>{k.subtipos.length > 0 && <div className="note">{k.subtipos.join(', ')}</div>}{k.requiere_descripcion && <div className="note">El técnico describe el gasto</div>}</td>
         <td className="note">{k.unidad}</td>
+        <td className="base"><input inputMode="numeric" defaultValue={k.tope_base != null ? miles(k.tope_base) : ''} placeholder="Sin tope" aria-label={`Tope base ${k.nombre}`}
+          onBlur={e => { const n = num(e.target.value); e.target.value = n ? miles(n) : ''; if ((n || null) !== (k.tope_base ?? null)) guardarBase(k.id, e.target.value) }} /></td>
         {ciuAct.map(c => { const v = topes.find(t => t.concepto_id === k.id && t.ciudad_id === c.id)?.valor
-          return <td key={c.id}><input inputMode="numeric" defaultValue={v != null ? miles(v) : ''} placeholder="Sin tope" aria-label={`Tope ${k.nombre} ${c.nombre}`}
+          return <td key={c.id + '-' + ver}><input inputMode="numeric" defaultValue={v != null ? miles(v) : ''} placeholder="Sin tope" aria-label={`Tope ${k.nombre} ${c.nombre}`}
             onBlur={e => { const n = num(e.target.value); e.target.value = n ? miles(n) : ''; if ((n || null) !== (v ?? null)) guardarTope(k.id, c.id, e.target.value) }} /></td> })}
         <td><button className="btn sm" onClick={() => toggle('conceptos', k.id, !k.activo)}>{k.activo ? 'Ocultar' : 'Mostrar'}</button></td>
       </tr>)}</tbody></table></div>
 
     <div className="hgrid" style={{ marginTop: 16 }}>
-      <div><h4>Agregar ciudad</h4><div className="range"><input className="inp" value={nc} onChange={e => setNc(e.target.value)} placeholder="Ej. Bucaramanga" /><button className="btn" onClick={agregarCiudad}>Agregar</button></div>
+      <div><h4>Agregar ciudad</h4><input className="inp" value={nc} onChange={e => setNc(e.target.value)} placeholder="Ej. Bucaramanga" />
+        <label className="opt"><input type="radio" name="mnc" checked={modoNc === 'base'} onChange={() => abrirNc('base')} /><span>Usar los <b>topes base</b></span></label>
+        <label className="opt"><input type="radio" name="mnc" checked={modoNc === 'propio'} onChange={() => abrirNc('propio')} /><span>Poner <b>topes diferentes</b> para esta ciudad</span></label>
+        {modoNc === 'propio' && <div className="tnc">{conceptos.filter(k => k.activo).map(k => <label key={k.id} className="opt sp"><span>{k.nombre} <span className="note">{k.unidad}</span></span>
+          <input className="inp tm" inputMode="numeric" value={tNc[k.id] || ''} placeholder="Sin tope"
+            onChange={e => setTNc({ ...tNc, [k.id]: e.target.value })} onBlur={e => { const n = num(e.target.value); setTNc({ ...tNc, [k.id]: n ? miles(n) : '' }) }} /></label>)}
+          <p className="note">Vienen llenos con los topes base; cambia solo los que sean distintos.</p></div>}
+        <button className="btn pri" onClick={agregarCiudad}>Agregar ciudad</button>
         <p className="note">Ciudades ocultas: {ciudades.filter(c => !c.activo).map(c => <button key={c.id} className="link" onClick={() => toggle('ciudades', c.id, true)}>{c.nombre}</button>)}
           {!ciudades.some(c => !c.activo) && 'ninguna'}</p>
         <p className="note">Ocultar: {ciuAct.map(c => <button key={c.id} className="link" onClick={() => toggle('ciudades', c.id, false)}>{c.nombre}</button>)}</p></div>
