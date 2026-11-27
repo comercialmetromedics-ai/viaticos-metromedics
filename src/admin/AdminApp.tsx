@@ -19,7 +19,7 @@ const TABS = [
 ] as const
 type Tab = typeof TABS[number][0]
 
-export default function AdminApp({ onTec, onModulo }: { onTec: () => void; onModulo: (m: Modulo) => void }) {
+export default function AdminApp({ onTec, onModulo }: { onTec: () => void; onModulo: (m: Modulo | null) => void }) {
   const { yo, perfiles } = useApp()
   const [tab, setTab] = useState<Tab>(() => { const h = location.hash.slice(1); return (TABS.some(t => t[0] === h) ? h : 'rev') as Tab })
   const [n, setN] = useState({ pen: 0, rec: 0 })

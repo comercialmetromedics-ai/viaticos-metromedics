@@ -2,12 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useApp } from '../lib/store'
 import { msgError, sb } from '../lib/sb'
 import { subirSoporte } from '../lib/img'
-import type { Avance, Equipo, Inventario, Orden } from '../lib/types'
+import type { Avance, Equipo, Inventario, Servicio } from '../lib/types'
 import { fdate, fhora } from '../lib/util'
 import { Modulos, Soporte, Vacio } from '../ui'
-import { buscarEquipos, CargarInventario, completo, Progreso, useEquipos, useInventarios } from './comun'
+import { buscarEquipos, CargarInventario, completo, NuevoServicio, Progreso, useEquipos, useInventarios } from './comun'
 
-type P = 'lista' | 'orden' | 'cargar' | 'equipo' | 'nuevo'
+type P = 'lista' | 'orden' | 'cargar' | 'equipo' | 'nuevo' | 'servicio'
 
 function usePantalla() {
   const [p, setP] = useState<P>('lista')
@@ -23,11 +23,11 @@ function usePantalla() {
   return [p, ir] as const
 }
 
-export default function EviTec({ onAdmin, onModulo }: { onAdmin?: () => void; onModulo: (m: 'via' | 'evi') => void }) {
+export default function EviTec({ onAdmin, onModulo }: { onAdmin?: () => void; onModulo: (m: 'via' | 'evi' | null) => void }) {
   const app = useApp()
   const { yo } = app
   const [p, ir] = usePantalla()
-  const { invs, av, listo, cargar } = useInventarios()
+  const { invs, av, servs, listo, cargar } = useInventarios()
   const [orden, setOrden] = useState<string | null>(null)
   const { eqs, cargar: cargarEq } = useEquipos(orden)
   const [eq, setEq] = useState<Equipo | null>(null)
@@ -35,10 +35,10 @@ export default function EviTec({ onAdmin, onModulo }: { onAdmin?: () => void; on
   const [nuevoTxt, setNuevoTxt] = useState('')
 
   const inv = invs.find(i => i.orden === orden)
-  const o = orden ? app.orden(orden) : undefined
+  const o = orden ? servs.find(x => x.num === orden) : undefined
   const abrirOrden = (n: string) => { setOrden(n); setQ(''); ir('orden') }
   const abrirEquipo = (e: Equipo) => { setEq(e); ir('equipo') }
-  const x: X = { app, invs, av, listo, orden, eqs, inv, o, q, setQ, ir, abrirOrden, abrirEquipo, setNuevoTxt }
+  const x: X = { app, invs, av, servs, listo, orden, eqs, inv, o, q, setQ, ir, abrirOrden, abrirEquipo, setNuevoTxt }
 
   return (
     <div className="tec">
@@ -51,6 +51,7 @@ export default function EviTec({ onAdmin, onModulo }: { onAdmin?: () => void; on
         {p === 'orden' && orden && <VerOrden x={x} />}
         {p === 'cargar' && orden && <CargarInventario orden={orden} onCancelar={() => history.back()} onListo={() => { cargar(); cargarEq(); history.back() }} />}
         {p === 'equipo' && eq && <Evidencia key={eq.id} e={eq} encabezados={inv?.encabezados || []} onListo={() => { cargarEq(); cargar(); history.back() }} />}
+        {p === 'servicio' && <NuevoServicio servs={servs} onCancelar={() => history.back()} onListo={n => { cargar(); setOrden(n); setQ(''); ir('orden', true) }} />}
         {p === 'nuevo' && orden && <NuevoEquipo orden={orden} texto={nuevoTxt} onListo={e => { cargarEq(); cargar(); setEq(e); ir('equipo', true) }} />}
       </div>
     </div>
@@ -58,22 +59,22 @@ export default function EviTec({ onAdmin, onModulo }: { onAdmin?: () => void; on
 }
 
 interface X {
-  app: ReturnType<typeof useApp>; invs: Inventario[]; av: Avance[]; listo: boolean; orden: string | null; eqs: Equipo[] | null
-  inv: Inventario | undefined; o: Orden | undefined; q: string; setQ: (s: string) => void; ir: (p: P, reemplazar?: boolean) => void
+  app: ReturnType<typeof useApp>; invs: Inventario[]; av: Avance[]; servs: Servicio[]; listo: boolean; orden: string | null; eqs: Equipo[] | null
+  inv: Inventario | undefined; o: Servicio | undefined; q: string; setQ: (s: string) => void; ir: (p: P, reemplazar?: boolean) => void
   abrirOrden: (n: string) => void; abrirEquipo: (e: Equipo) => void; setNuevoTxt: (s: string) => void
 }
 
 function Lista({ x }: { x: X }) {
-const { app, invs, av, listo, abrirOrden } = x; const { ordenes } = app
+  const { app, av, servs, listo, abrirOrden, ir } = x
   const [b, setB] = useState('')
   const k = b.trim().toUpperCase()
-  const lista = ordenes.filter(x => !x.archivada && (!k || [x.num, x.cliente, app.ciudad(x.ciudad_id)].join(' ').toUpperCase().includes(k)))
-    .sort((a, c) => Number(!!invs.find(i => i.orden === c.num)) - Number(!!invs.find(i => i.orden === a.num)) || c.created_at.localeCompare(a.created_at))
+  const lista = servs.filter(x => !x.archivado && (!k || [x.num, x.cliente, app.ciudad(x.ciudad_id)].join(' ').toUpperCase().includes(k)))
   return <>
     <h1>Evidencias de calibración</h1>
     <p className="hint ink">Elige el servicio. Por cada equipo calibrado carga la foto del equipo y la del sticker.</p>
-    <input className="inp mt" value={b} onChange={e => setB(e.target.value)} placeholder="Buscar orden o cliente" aria-label="Buscar orden" />
-    <div className="mt">{!listo ? <p className="hint">Cargando…</p> : !lista.length ? <Vacio>No hay órdenes. Crea la orden desde el módulo Viáticos o pide al administrador.</Vacio> :
+    <button className="big mt" onClick={() => ir('servicio')}>+ Nuevo servicio</button>
+    <input className="inp mt" value={b} onChange={e => setB(e.target.value)} placeholder="Buscar servicio o cliente" aria-label="Buscar servicio" />
+    <div className="mt">{!listo ? <p className="hint">Cargando…</p> : !lista.length ? <Vacio>{k ? 'No hay servicios con esa búsqueda.' : 'Aún no hay servicios. Crea el primero con «Nuevo servicio».'}</Vacio> :
       lista.slice(0, 60).map(x => { const a = av.find(v => v.orden === x.num)
         return <button key={x.num} className="row col" onClick={() => abrirOrden(x.num)}>
           <div className="rowline"><b>{x.num}</b><small>{app.ciudad(x.ciudad_id)}</small></div>
@@ -84,7 +85,7 @@ const { app, invs, av, listo, abrirOrden } = x; const { ordenes } = app
 }
 
 function VerOrden({ x }: { x: X }) {
-const { app, av, listo, orden, eqs, inv, o, q, setQ, ir, setNuevoTxt } = x; const yo = app.yo
+  const { app, av, listo, orden, eqs, inv, o, q, setQ, ir, setNuevoTxt } = x; const yo = app.yo
   const [filtro, setFiltro] = useState<'pend' | 'ok' | 'todos'>('pend')
   const [mas, setMas] = useState(60)
   const a = av.find(v => v.orden === orden)
@@ -120,7 +121,7 @@ const { app, av, listo, orden, eqs, inv, o, q, setQ, ir, setNuevoTxt } = x; cons
 }
 
 function Cabecera({ x }: { x: X }) {
-const { app, orden, o, inv } = x
+  const { app, orden, o, inv } = x
   return <div className="row col">
     <div className="rowline"><b>{orden}</b><small>{app.ciudad(o?.ciudad_id)}</small></div>
     <small>{o?.cliente}</small>
@@ -129,7 +130,7 @@ const { app, orden, o, inv } = x
 }
 
 function FilaEq({ x, e }: { x: X; e: Equipo }) {
-const { app, abrirEquipo } = x
+  const { app, abrirEquipo } = x
   const ok = completo(e)
   return <button className="row col eqrow" onClick={() => abrirEquipo(e)}>
     <div className="rowline"><b>{e.descripcion || 'Equipo'}</b><span className={'chip ' + (ok ? 'c-aprobado' : 'c-pendiente')}>{ok ? 'Con evidencia' : 'Pendiente'}</span></div>

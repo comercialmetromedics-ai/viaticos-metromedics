@@ -16,8 +16,8 @@ export default function App() {
     const { data } = sb.auth.onAuthStateChange(e => { if (e === 'PASSWORD_RECOVERY') setRecuperar(true) })
     return () => data.subscription.unsubscribe()
   }, [])
-  const [modulo, setModulo] = useState<Modulo>(() => (localStorage.getItem('modulo') as Modulo) || 'via')
-  const cambiarMod = (m: Modulo) => { try { localStorage.setItem('modulo', m) } catch { /* sin almacenamiento */ } setModulo(m) }
+  const [modulo, setModulo] = useState<Modulo | null>(() => (sessionStorage.getItem('modulo') as Modulo) || null)
+  const cambiarMod = (m: Modulo | null) => { try { if (m) sessionStorage.setItem('modulo', m); else sessionStorage.removeItem('modulo') } catch { /* sin almacenamiento */ } setModulo(m) }
   const cambiar = (m: 'admin' | 'tec') => { try { localStorage.setItem('modo', m) } catch { /* sin almacenamiento */ } setModo(m) }
 
   if (!configurado) return (
@@ -36,9 +36,27 @@ export default function App() {
       <div className="links"><button onClick={() => sb.auth.signOut()}>Salir</button></div>
     </div></main>
   )
+  if (!modulo) return <Inicio nombre={yo.nombre} onElegir={cambiarMod} />
   const admin = yo.rol === 'admin' && modo === 'admin'
   const onAdmin = yo.rol === 'admin' ? () => cambiar('admin') : undefined
   if (modulo === 'evi') return admin ? <EviAdmin key="ea" onTec={() => cambiar('tec')} onModulo={cambiarMod} /> : <EviTec key="et" onAdmin={onAdmin} onModulo={cambiarMod} />
   if (admin) return <AdminApp key="va" onTec={() => cambiar('tec')} onModulo={cambiarMod} />
   return <TecApp key="vt" onAdmin={onAdmin} onModulo={cambiarMod} />
+}
+
+function Inicio({ nombre, onElegir }: { nombre: string; onElegir: (m: Modulo) => void }) {
+  return <main className="inicio">
+    <div className="ini-c">
+      <img src="icon.svg" alt="" width={48} height={48} />
+      <h1>Hola, {nombre.split(' ')[0]}</h1>
+      <p className="hint ink">¿A qué módulo quieres entrar?</p>
+      <button className="modcard" onClick={() => onElegir('via')}>
+        <span className="ic">$</span><div><b>Viáticos</b><small>Reportar gastos por orden de servicio, ver saldos y novedades.</small></div><i>›</i>
+      </button>
+      <button className="modcard" onClick={() => onElegir('evi')}>
+        <span className="ic">📷</span><div><b>Evidencias de calibración</b><small>Inventario del servicio y fotos del equipo y del sticker.</small></div><i>›</i>
+      </button>
+      <div className="links"><button onClick={() => sb.auth.signOut()}>Salir</button></div>
+    </div>
+  </main>
 }

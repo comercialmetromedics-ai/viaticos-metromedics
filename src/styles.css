@@ -303,3 +303,14 @@ th.kcod,.kcod{background:#e8f1ff;color:#123a73}th.kser,.kser{background:#e3f5ec;
 .narrow{max-width:760px}
 .cinv .err{margin:8px 0}
 .apane .chips.fch{margin:0}.apane .chips.fch button{flex:none;padding:6px 14px;min-height:0}
+/* ---------- Pantalla de módulos ---------- */
+.inicio{min-height:100dvh;display:grid;place-items:center;padding:24px 18px}
+.ini-c{width:100%;max-width:460px}.ini-c h1{margin-top:14px}
+.modcard{display:flex;gap:14px;align-items:center;width:100%;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:18px;padding:18px 16px;margin-top:12px;min-height:92px}
+.modcard .ic{flex:none;width:48px;height:48px;border-radius:14px;background:var(--acc);color:#fff;display:grid;place-items:center;font-size:22px;font-weight:700}
+.modcard b{display:block;font-size:18px}.modcard small{display:block;color:var(--mute);font-size:14px;line-height:1.35;margin-top:2px}
+.modcard i{margin-left:auto;font-style:normal;font-size:26px;color:var(--mute)}
+.modcard:active{transform:scale(.99)}
+.modt{display:flex;align-items:center;gap:8px}
+.modt button{border:1px solid var(--line);background:var(--soft);border-radius:9px;padding:2px 9px;font-size:13px;color:var(--mute)}
+.modt b{font-size:17px}

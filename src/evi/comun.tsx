@@ -2,8 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useApp } from '../lib/store'
 import { msgError, sb } from '../lib/sb'
 import { descargarArchivo, subirSoporte, urlFirmada } from '../lib/img'
-import type { Avance, Equipo, Inventario } from '../lib/types'
-import { fdate, fhora, ymd } from '../lib/util'
+import type { Avance, Equipo, Inventario, Servicio } from '../lib/types'
+import { fdate, fhora, normOrden, numBase, ORDEN_OK, ymd } from '../lib/util'
 import type { HojaInfo, Libro, Mapeo } from './xlsx'
 
 /** Carga perezosa del módulo de Excel (solo cuando se usa) */
@@ -25,17 +25,20 @@ export function buscarEquipos(eqs: Equipo[], q: string) {
 export function useInventarios(tick = 0) {
   const [invs, setInvs] = useState<Inventario[]>([])
   const [av, setAv] = useState<Avance[]>([])
+  const [servs, setServs] = useState<Servicio[]>([])
   const [listo, setListo] = useState(false)
   const cargar = useCallback(async () => {
-    const [i, a] = await Promise.all([sb.from('inventarios').select('*'), sb.from('avance_inventarios').select('*')])
-    if (i.data) setInvs(i.data); if (a.data) setAv(a.data); setListo(true)
+    const [i, a, s] = await Promise.all([sb.from('inventarios').select('*'), sb.from('avance_inventarios').select('*'),
+      sb.from('servicios').select('*').order('created_at', { ascending: false })])
+    if (i.data) setInvs(i.data); if (a.data) setAv(a.data); if (s.data) setServs(s.data); setListo(true)
   }, [])
   useEffect(() => { cargar() }, [cargar, tick])
   useEffect(() => {
-    const ch = sb.channel('evi-inv').on('postgres_changes', { event: '*', schema: 'public', table: 'equipos' }, () => cargar()).subscribe()
+    const ch = sb.channel('evi-inv').on('postgres_changes', { event: '*', schema: 'public', table: 'equipos' }, () => cargar())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'servicios' }, () => cargar()).subscribe()
     return () => { sb.removeChannel(ch) }
   }, [cargar])
-  return { invs, av, listo, cargar }
+  return { invs, av, servs, listo, cargar }
 }
 
 export function useEquipos(orden: string | null) {
@@ -207,4 +210,41 @@ export async function generarExcelAvance(inv: Inventario, eqs: Equipo[], nombre:
   const limpio = (s: string) => s.replace(/[\\/:*?"<>|]+/g, ' ').trim()
   a.download = `Avance tecnico ${limpio(inv.orden)} ${limpio(cliente)} ${ymd()}.xlsx`
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000)
+}
+
+// ------------------------------------------------------------------ servicio nuevo
+export function NuevoServicio({ servs, inicial = '', onListo, onCancelar }: { servs: Servicio[]; inicial?: string; onListo: (num: string) => void; onCancelar?: () => void }) {
+  const app = useApp()
+  const [num, setNum] = useState(normOrden(inicial))
+  const [cli, setCli] = useState(''); const [ciu, setCiu] = useState('')
+  const [err, setErr] = useState(''); const [busy, setBusy] = useState(false)
+  async function crear() {
+    const n = normOrden(num)
+    if (!ORDEN_OK.test(n)) return setErr('Escribe el número del servicio con letras, números y guiones (ej. 4120-CAL-MMCS).')
+    const dup = servs.find(s => s.num === n || (numBase(n) && numBase(s.num) === numBase(n)))
+    if (dup) return setErr(`Ya existe el servicio ${dup.num}; búscalo en la lista.`)
+    if (cli.trim().length < 2) return setErr('Escribe la razón social del cliente.')
+    if (!ciu) return setErr('Selecciona la ciudad.')
+    setBusy(true)
+    const { error } = await sb.rpc('crear_servicio', { p_num: n, p_cliente: cli.trim(), p_ciudad: Number(ciu) })
+    setBusy(false)
+    if (error) return setErr(msgError(error))
+    app.toast(`Servicio ${n} creado`); onListo(n)
+  }
+  return <div className="narrow">
+    <h2>Nuevo servicio</h2>
+    <p className="hint">Quien crea el servicio carga el inventario (Excel). Es independiente de las órdenes de viáticos.</p>
+    <label className="f" htmlFor="ns-n">Número de orden de servicio</label>
+    <input id="ns-n" className="inp" value={num} onChange={e => setNum(e.target.value.toUpperCase())} placeholder="Ej. 4120-CAL-MMCS" autoCapitalize="characters" />
+    <label className="f" htmlFor="ns-c">Razón social del cliente</label>
+    <input id="ns-c" className="inp" value={cli} onChange={e => setCli(e.target.value)} placeholder="Ej. Fundación Neumológica Colombiana" />
+    <label className="f" htmlFor="ns-ci">Ciudad</label>
+    <select id="ns-ci" className="inp" value={ciu} onChange={e => setCiu(e.target.value)}>
+      <option value="">Selecciona…</option>
+      {app.ciudades.filter(c => c.activo).map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+    </select>
+    <p className="err">{err}</p>
+    <button className="big" onClick={crear} disabled={busy}>{busy ? 'Creando…' : 'Crear servicio'}</button>
+    {onCancelar && <button className="btn w mt" onClick={onCancelar}>Cancelar</button>}
+  </div>
 }

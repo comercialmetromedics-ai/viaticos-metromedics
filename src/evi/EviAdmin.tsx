@@ -1,19 +1,19 @@
 import { useState } from 'react'
 import { useApp } from '../lib/store'
 import { msgError, sb } from '../lib/sb'
-import type { Inventario } from '../lib/types'
+import type { Inventario, Servicio } from '../lib/types'
 import { fdate, fhora } from '../lib/util'
 import { Modulos, Soporte, Vacio } from '../ui'
 import type { Modulo } from '../ui'
-import { CargarInventario, completo, generarExcelAvance, Progreso, useEquipos, useInventarios } from './comun'
+import { CargarInventario, completo, generarExcelAvance, NuevoServicio, Progreso, useEquipos, useInventarios } from './comun'
 
-export default function EviAdmin({ onTec, onModulo }: { onTec: () => void; onModulo: (m: Modulo) => void }) {
+export default function EviAdmin({ onTec, onModulo }: { onTec: () => void; onModulo: (m: Modulo | null) => void }) {
   const app = useApp()
   const { yo } = app
-  const { invs, av, listo, cargar } = useInventarios()
+  const { invs, av, servs, listo, cargar } = useInventarios()
+  const [nuevo, setNuevo] = useState(false)
   const [ver, setVer] = useState<string | null>(null)
   const [cargando, setCargando] = useState<string | null>(null)
-  const [nueva, setNueva] = useState('')
   const [q, setQ] = useState('')
   const [gen, setGen] = useState<{ orden: string; txt: string } | null>(null)
 
@@ -25,15 +25,19 @@ export default function EviAdmin({ onTec, onModulo }: { onTec: () => void; onMod
         const { data } = await sb.from('equipos').select('*').eq('orden', inv.orden).order('id').range(i, i + 999)
         todos.push(...(data || [])); if (!data || data.length < 1000) break
       }
-      await generarExcelAvance(inv, todos, app.nombre, app.orden(inv.orden)?.cliente || '', t => setGen({ orden: inv.orden, txt: t }))
+      await generarExcelAvance(inv, todos, app.nombre, servs.find(x => x.num === inv.orden)?.cliente || '', t => setGen({ orden: inv.orden, txt: t }))
       app.toast('Avance técnico descargado')
     } catch (e) { app.toast(msgError(e), 'error') } finally { setGen(null) }
   }
 
-  const sinInv = app.ordenes.filter(o => !o.archivada && !invs.some(i => i.orden === o.num))
+  const [archivados, setArchivados] = useState(false)
   const k = q.trim().toUpperCase()
-  const lista = invs.filter(i => { const o = app.orden(i.orden); return !k || [i.orden, o?.cliente, app.ciudad(o?.ciudad_id)].join(' ').toUpperCase().includes(k) })
-    .sort((a, b) => (av.find(x => x.orden === b.orden)?.ultima || b.cargado_at).localeCompare(av.find(x => x.orden === a.orden)?.ultima || a.cargado_at))
+  const lista = servs.filter(s => s.archivado === archivados && (!k || [s.num, s.cliente, app.ciudad(s.ciudad_id)].join(' ').toUpperCase().includes(k)))
+  async function archivar(s: Servicio, v: boolean) {
+    const { error } = await sb.from('servicios').update({ archivado: v }).eq('num', s.num)
+    if (error) return app.toast(msgError(error), 'error')
+    app.toast(v ? `${s.num} archivado` : `${s.num} reactivado`); cargar()
+  }
 
   return (
     <div className="admin">
@@ -45,32 +49,32 @@ export default function EviAdmin({ onTec, onModulo }: { onTec: () => void; onMod
         </div>
       </header>
       <main className="apane">
-        {cargando ? <div className="narrow"><CargarInventario orden={cargando} onCancelar={() => setCargando(null)} onListo={() => { setCargando(null); cargar() }} /></div>
-          : ver ? <Detalle orden={ver} onVolver={() => setVer(null)} onDescargar={descargar} gen={gen} onBorrado={() => { setVer(null); cargar() }} invs={invs} />
+        {nuevo ? <NuevoServicio servs={servs} onCancelar={() => setNuevo(false)} onListo={() => { setNuevo(false); cargar() }} />
+          : cargando ? <div className="narrow"><CargarInventario orden={cargando} onCancelar={() => setCargando(null)} onListo={() => { setCargando(null); cargar() }} /></div>
+          : ver ? <Detalle orden={ver} onVolver={() => setVer(null)} onDescargar={descargar} gen={gen} onBorrado={() => { setVer(null); cargar() }} invs={invs} servs={servs} />
           : <>
             <h2>Evidencias de calibración</h2>
-            <p className="note">Cada orden tiene un inventario (Excel). Los técnicos cargan la foto del equipo y la del sticker; aquí ves el avance y descargas el Excel original con las fotos en cada fila.</p>
+            <p className="note">Servicios del módulo de evidencias (independientes de las órdenes de viáticos). Cada servicio tiene un inventario (Excel); los técnicos cargan la foto del equipo y la del sticker, y aquí descargas el Excel original con las fotos en cada fila.</p>
             <div className="tool">
               <div className="range">
-                <select className="inp sm" value={nueva} onChange={e => setNueva(e.target.value)} aria-label="Orden sin inventario">
-                  <option value="">Cargar inventario a la orden…</option>
-                  {sinInv.map(o => <option key={o.num} value={o.num}>{o.num} · {o.cliente}</option>)}
-                </select>
-                <button className="btn sm pri" disabled={!nueva} onClick={() => { setCargando(nueva); setNueva('') }}>Cargar Excel</button>
+                <button className="btn sm pri" onClick={() => setNuevo(true)}>+ Nuevo servicio</button>
+                <label><input type="checkbox" checked={archivados} onChange={e => setArchivados(e.target.checked)} /> Ver archivados</label>
               </div>
-              <input className="inp" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar orden o cliente" aria-label="Buscar" />
+              <input className="inp" value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar servicio o cliente" aria-label="Buscar" />
             </div>
-            {!listo ? <p className="hint">Cargando…</p> : !lista.length ? <Vacio>Aún no hay inventarios cargados.</Vacio> :
+            {!listo ? <p className="hint">Cargando…</p> : !lista.length ? <Vacio>{archivados ? 'No hay servicios archivados.' : 'Aún no hay servicios. Crea uno con «Nuevo servicio».'}</Vacio> :
               <div className="tblw"><table className="stack">
-                <thead><tr><th>Orden</th><th>Inventario</th><th>Avance</th><th>Última evidencia</th><th></th></tr></thead>
-                <tbody>{lista.map(i => { const o = app.orden(i.orden); const a = av.find(x => x.orden === i.orden)
-                  return <tr key={i.orden}>
-                    <td><b>{i.orden}</b><div className="note">{o?.cliente} · {app.ciudad(o?.ciudad_id)}</div></td>
-                    <td>{i.nombre_archivo}<div className="note">{app.nombre(i.cargado_por)} · {fdate(i.cargado_at)}</div></td>
+                <thead><tr><th>Servicio</th><th>Inventario</th><th>Avance</th><th>Última evidencia</th><th></th></tr></thead>
+                <tbody>{lista.map(s => { const i = invs.find(x => x.orden === s.num); const a = av.find(x => x.orden === s.num)
+                  return <tr key={s.num}>
+                    <td><b>{s.num}</b><div className="note">{s.cliente} · {app.ciudad(s.ciudad_id)}</div><div className="note">Creado por {app.nombre(s.responsable)}</div></td>
+                    <td>{i ? <>{i.nombre_archivo}<div className="note">{app.nombre(i.cargado_por)} · {fdate(i.cargado_at)}</div></> : <span className="note">Sin inventario</span>}</td>
                     <td style={{ minWidth: 200 }}>{a && <Progreso n={a.con_evidencia} total={a.total} />}{a && a.agregados > 0 && <div className="note">{a.agregados} agregados en campo</div>}</td>
                     <td>{a?.ultima ? `${fdate(a.ultima)} ${fhora(a.ultima)}` : '—'}</td>
-                    <td className="nw"><button className="btn sm" onClick={() => setVer(i.orden)}>Ver equipos</button>{' '}
-                      <button className="btn sm pri" disabled={!!gen} onClick={() => descargar(i)}>{gen?.orden === i.orden ? gen.txt : 'Descargar avance'}</button></td>
+                    <td className="nw">{i ? <><button className="btn sm" onClick={() => setVer(s.num)}>Ver equipos</button>{' '}
+                      <button className="btn sm pri" disabled={!!gen} onClick={() => descargar(i)}>{gen?.orden === s.num ? gen.txt : 'Descargar avance'}</button></>
+                      : !s.archivado && <button className="btn sm pri" onClick={() => setCargando(s.num)}>Cargar inventario</button>}{' '}
+                      <button className="btn sm" onClick={() => archivar(s, !s.archivado)}>{s.archivado ? 'Reactivar' : 'Archivar'}</button></td>
                   </tr> })}</tbody></table></div>}
           </>}
       </main>
@@ -78,15 +82,15 @@ export default function EviAdmin({ onTec, onModulo }: { onTec: () => void; onMod
   )
 }
 
-function Detalle({ orden, invs, onVolver, onDescargar, onBorrado, gen }: {
-  orden: string; invs: Inventario[]; onVolver: () => void; onDescargar: (i: Inventario) => void; onBorrado: () => void; gen: { orden: string; txt: string } | null
+function Detalle({ orden, invs, servs, onVolver, onDescargar, onBorrado, gen }: {
+  orden: string; invs: Inventario[]; servs: Servicio[]; onVolver: () => void; onDescargar: (i: Inventario) => void; onBorrado: () => void; gen: { orden: string; txt: string } | null
 }) {
   const app = useApp()
   const { eqs } = useEquipos(orden)
   const [filtro, setFiltro] = useState<'todos' | 'ok' | 'pend' | 'campo'>('todos')
   const [q, setQ] = useState('')
   const inv = invs.find(i => i.orden === orden)!
-  const o = app.orden(orden)
+  const o = servs.find(s => s.num === orden)
   const k = q.trim().toUpperCase()
   const lista = (eqs || []).filter(e => (filtro === 'todos' || (filtro === 'ok' ? completo(e) : filtro === 'pend' ? !completo(e) : e.fila == null))
     && (!k || [e.descripcion, e.serie, ...e.codigos].join(' ').toUpperCase().includes(k)))

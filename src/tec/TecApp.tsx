@@ -34,7 +34,7 @@ function usePantalla() {
   return [p, ir] as const
 }
 
-export default function TecApp({ onAdmin, onModulo }: { onAdmin?: () => void; onModulo: (m: Modulo) => void }) {
+export default function TecApp({ onAdmin, onModulo }: { onAdmin?: () => void; onModulo: (m: Modulo | null) => void }) {
   const app = useApp()
   const { yo, config, ordenes, conceptos, topes, toast } = app
   const uid = yo!.id

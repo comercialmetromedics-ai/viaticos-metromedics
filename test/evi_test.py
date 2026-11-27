@@ -4,7 +4,7 @@ src = open('/home/claude/viaticos/test/ui_test.py').read()
 exec(src[:src.index("errs = []")])
 INV = open(sys.argv[1] if len(sys.argv) > 1 else '/tmp/inv/inv.xlsx', 'rb').read()
 JPG = open('/tmp/xt/eq.jpg', 'rb').read()
-DB['inventarios'] = []; DB['equipos'] = []; DB['avance_inventarios'] = []
+DB['inventarios'] = []; DB['equipos'] = []; DB['avance_inventarios'] = []; DB['servicios'] = []
 for o in DB['ordenes']: o['responsable'] = C
 seq = {'eq': 0}
 def avance():
@@ -32,6 +32,9 @@ def h2(route, req):
     m = re.match(r'/rest/v1/rpc/(\w+)', path)
     if m:
         b = json.loads(req.post_data or '{}'); f = m.group(1)
+        if f == 'crear_servicio':
+            DB['servicios'].insert(0, {'num': b['p_num'], 'cliente': b['p_cliente'], 'ciudad_id': b['p_ciudad'], 'responsable': USER, 'created_at': hoy + 'T14:00:00Z', 'archivado': False})
+            return route.fulfill(status=200, headers=hdr, body=json.dumps(b['p_num']))
         if f == 'cargar_inventario':
             DB['inventarios'].append({'orden': b['p_orden'], 'archivo_path': b['p_archivo'], 'nombre_archivo': b['p_nombre'], 'hoja': b['p_hoja'],
               'fila_encabezado': b['p_fila'], 'col_codigos': b['p_col_codigos'], 'col_serie': b['p_col_serie'], 'col_desc': b['p_col_desc'],
@@ -54,11 +57,14 @@ with sync_playwright() as p:
     b = p.chromium.launch()
     USER = C
     ctx = b.new_context(viewport={'width': 390, 'height': 844}); ctx.route('https://x.supabase.co/**', h2)
-    ctx.add_init_script(f"localStorage.setItem('sb-x-auth-token', {json.dumps(sesion(C))}); localStorage.setItem('modulo','evi')")
+    ctx.add_init_script(f"localStorage.setItem('sb-x-auth-token', {json.dumps(sesion(C))})")
     pg = ctx.new_page(); pg.on('pageerror', lambda e: errs.append('tec: ' + str(e)))
-    pg.goto('http://localhost:4173/'); pg.wait_for_selector('text=Evidencias de calibración', timeout=8000)
-    pg.screenshot(path='/tmp/e1.png')
-    pg.locator('.row').first.click(); pg.wait_for_selector('text=Cargar inventario (Excel)'); pg.click('text=Cargar inventario (Excel)')
+    pg.goto('http://localhost:4173/'); pg.wait_for_selector('text=¿A qué módulo quieres entrar?', timeout=8000)
+    pg.screenshot(path='/tmp/e0.png')
+    pg.click('.modcard:has-text("Evidencias")'); pg.wait_for_selector('text=+ Nuevo servicio'); pg.screenshot(path='/tmp/e1.png')
+    pg.click('text=+ Nuevo servicio'); pg.fill('#ns-n', '4120 cal mmcs'); pg.fill('#ns-c', 'Fundación Neumológica'); pg.select_option('#ns-ci', '1')
+    pg.click('button.big:has-text("Crear servicio")')
+    pg.wait_for_selector('text=Cargar inventario (Excel)'); pg.click('text=Cargar inventario (Excel)')
     pg.set_input_files('.big-up input', files=[{'name': 'Inventario_neumologica.xlsx', 'mimeType': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'buffer': INV}])
     pg.wait_for_selector('text=equipos encontrados', timeout=8000); pg.screenshot(path='/tmp/e2.png', full_page=True)
     pg.click('button.big:has-text("Cargar")'); pg.wait_for_selector('#eq-q', timeout=8000)
@@ -83,7 +89,7 @@ with sync_playwright() as p:
     ctx.close()
     USER = A
     ctx = b.new_context(viewport={'width': 1366, 'height': 900}, accept_downloads=True); ctx.route('https://x.supabase.co/**', h2)
-    ctx.add_init_script(f"localStorage.setItem('sb-x-auth-token', {json.dumps(sesion(A))}); localStorage.setItem('modulo','evi'); localStorage.setItem('modo','admin')")
+    ctx.add_init_script(f"localStorage.setItem('sb-x-auth-token', {json.dumps(sesion(A))}); sessionStorage.setItem('modulo','evi'); localStorage.setItem('modo','admin')")
     pg = ctx.new_page(); pg.on('pageerror', lambda e: errs.append('adm: ' + str(e)))
     pg.goto('http://localhost:4173/'); pg.wait_for_selector('text=Descargar avance', timeout=8000); pg.screenshot(path='/tmp/e8.png', full_page=True)
     with pg.expect_download(timeout=30000) as d: pg.click('button:has-text("Descargar avance")')

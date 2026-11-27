@@ -46,3 +46,4 @@ export interface Equipo {
   foto_equipo: string | null; foto_sticker: string | null; nota: string | null; evidencia_por: string | null; evidencia_at: string | null
 }
 export interface Avance { orden: string; total: number; con_evidencia: number; agregados: number; ultima: string | null }
+export interface Servicio { num: string; cliente: string; ciudad_id: number; responsable: string; created_at: string; archivado: boolean }
