@@ -5,7 +5,7 @@ import { subirSoporte } from '../lib/img'
 import type { Avance, Equipo, Inventario, Servicio } from '../lib/types'
 import { fdate, fhora } from '../lib/util'
 import { Modulos, Soporte, Vacio } from '../ui'
-import { buscarEquipos, CargarInventario, completo, NuevoServicio, Progreso, useEquipos, useInventarios } from './comun'
+import { buscarEquipos, CargarInventario, completo, generarExcelAvance, NuevoServicio, Progreso, useEquipos, useInventarios } from './comun'
 
 type P = 'lista' | 'orden' | 'cargar' | 'equipo' | 'nuevo' | 'servicio'
 
@@ -102,6 +102,7 @@ function VerOrden({ x }: { x: X }) {
   return <>
     <Cabecera x={x} />
     {a && <Progreso n={a.con_evidencia} total={a.total} grande />}
+    <Descargar x={x} />
     <label className="f" htmlFor="eq-q">Cargar evidencia · código interno o número de serie</label>
     <input id="eq-q" className="inp big-inp" value={q} onChange={e => setQ(e.target.value)} placeholder="Ej. 2616, H00540 o 1600015968" autoComplete="off" autoCapitalize="characters" />
     {q.trim() ? <div className="mt">
@@ -118,6 +119,18 @@ function VerOrden({ x }: { x: X }) {
       {lista.length > mas && <button className="btn w" onClick={() => setMas(mas + 100)}>Mostrar más ({lista.length - mas})</button>}
     </>}
   </>
+}
+
+function Descargar({ x }: { x: X }) {
+  const { app, inv, eqs, o } = x
+  const [txt, setTxt] = useState('')
+  if (!inv || !eqs) return null
+  async function bajar() {
+    setTxt('Preparando…')
+    try { await generarExcelAvance(inv!, eqs!, app.nombre, o?.cliente || '', setTxt); app.toast('Avance técnico descargado') }
+    catch (e) { app.toast(msgError(e), 'error') } finally { setTxt('') }
+  }
+  return <button className="btn w" disabled={!!txt} onClick={bajar}>{txt || '⬇ Descargar avance técnico (Excel)'}</button>
 }
 
 function Cabecera({ x }: { x: X }) {

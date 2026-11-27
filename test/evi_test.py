@@ -56,7 +56,7 @@ errs = []
 with sync_playwright() as p:
     b = p.chromium.launch()
     USER = C
-    ctx = b.new_context(viewport={'width': 390, 'height': 844}); ctx.route('https://x.supabase.co/**', h2)
+    ctx = b.new_context(viewport={'width': 390, 'height': 844}, accept_downloads=True); ctx.route('https://x.supabase.co/**', h2)
     ctx.add_init_script(f"localStorage.setItem('sb-x-auth-token', {json.dumps(sesion(C))})")
     pg = ctx.new_page(); pg.on('pageerror', lambda e: errs.append('tec: ' + str(e)))
     pg.goto('http://localhost:4173/'); pg.wait_for_selector('text=¿A qué módulo quieres entrar?', timeout=8000)
@@ -86,6 +86,10 @@ with sync_playwright() as p:
     ins.nth(0).set_input_files(files=[{'name': 'a.jpg', 'mimeType': 'image/jpeg', 'buffer': JPG}]); ins.nth(1).set_input_files(files=[{'name': 'b.jpg', 'mimeType': 'image/jpeg', 'buffer': JPG}])
     pg.click('button.big'); pg.wait_for_selector('#eq-q', timeout=8000); pg.wait_for_timeout(400)
     pg.screenshot(path='/tmp/e7.png', full_page=True)
+    pg.fill('#eq-q', ''); pg.wait_for_timeout(200)
+    with pg.expect_download(timeout=30000) as d: pg.click('button:has-text("Descargar avance técnico")')
+    d.value.save_as('/tmp/xt/avance_tec.xlsx'); print('técnico descargó', d.value.suggested_filename)
+    pg.screenshot(path='/tmp/e7b.png')
     ctx.close()
     USER = A
     ctx = b.new_context(viewport={'width': 1366, 'height': 900}, accept_downloads=True); ctx.route('https://x.supabase.co/**', h2)
