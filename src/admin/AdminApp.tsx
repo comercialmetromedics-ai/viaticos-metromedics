@@ -10,6 +10,8 @@ import Usuarios from './Usuarios'
 import Legalizaciones from './Legalizaciones'
 import Ordenes from './Ordenes'
 import Estados from './Estados'
+import { Modulos } from '../ui'
+import type { Modulo } from '../ui'
 
 const TABS = [
   ['rev', 'Por revisar'], ['apr', 'Aprobados'], ['rec', 'Rechazados'], ['via', 'Viáticos entregados'], ['leg', 'Legalizaciones'],
@@ -17,7 +19,7 @@ const TABS = [
 ] as const
 type Tab = typeof TABS[number][0]
 
-export default function AdminApp({ onTec }: { onTec: () => void }) {
+export default function AdminApp({ onTec, onModulo }: { onTec: () => void; onModulo: (m: Modulo) => void }) {
   const { yo, perfiles } = useApp()
   const [tab, setTab] = useState<Tab>(() => { const h = location.hash.slice(1); return (TABS.some(t => t[0] === h) ? h : 'rev') as Tab })
   const [n, setN] = useState({ pen: 0, rec: 0 })
@@ -48,7 +50,7 @@ export default function AdminApp({ onTec }: { onTec: () => void }) {
   return (
     <div className="admin">
       <header className="abar noprint">
-        <div className="brand"><img src="icon.svg" alt="" width={32} height={32} /><div><b>Viáticos · Administración</b><small>{yo?.nombre}</small></div></div>
+        <div className="brand"><img src="icon.svg" alt="" width={32} height={32} /><div><Modulos actual="via" onCambio={onModulo} /><small>Administración · {yo?.nombre}</small></div></div>
         <div className="abar-r">
           <button className="btn sm" onClick={onTec}>Vista técnico</button>
           <button className="btn sm" onClick={() => sb.auth.signOut()}>Salir</button>

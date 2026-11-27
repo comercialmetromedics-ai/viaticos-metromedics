@@ -277,3 +277,29 @@ h4.gdia span { font-size: 12px; background: #eef1f5; border-radius: 10px; paddin
 .fgasto .link { align-self: flex-start; font-size: 12px; }
 .fcarga { background: #f1f3f6; color: #333; }
 .fcarga.tarde { background: #fff4df; color: #7a4b00; }
+/* ---------- Módulos ---------- */
+.mods{display:inline-flex;background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:2px;gap:2px}
+.mods button{border:0;background:none;border-radius:8px;padding:4px 12px;font-size:15px;font-weight:600;color:var(--mute)}
+.mods button[aria-selected=true]{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+/* ---------- Evidencias ---------- */
+.mt{margin-top:12px}
+.prog{margin-top:6px}.prog .bar{height:8px;border-radius:6px;background:var(--soft);overflow:hidden;border:1px solid var(--line)}
+.prog .bar i{display:block;height:100%;background:var(--ok)}
+.prog span{display:block;font-size:13px;color:var(--mute);margin-top:3px}.prog b{color:var(--ink)}
+.prog.g{margin:12px 0}.prog.g .bar{height:12px}
+.big-inp{font-size:20px;font-weight:600;letter-spacing:.02em;min-height:56px}
+.eqrow .rowline b{font-size:15px}
+.fslot{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:12px 14px;margin-top:12px}
+.fslot>b{display:block}.fslot>small{display:block;color:var(--mute);font-size:13px}
+.fprev{margin-top:8px;display:flex;align-items:flex-end;gap:8px}.fprev img{max-width:100%;max-height:220px;border-radius:10px;display:block}
+.fbtns{display:grid;grid-template-columns:2fr 1fr;gap:8px;margin-top:10px}
+.fbtns label input,.big-up input{display:none}
+.big-up{display:block;text-align:center;padding:26px 12px;font-weight:600;margin-top:12px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:8px 0 0;font-size:13px}.kv div{display:contents}.kv dt{color:var(--mute)}.kv dd{margin:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0 12px}
+.chk{display:flex;flex-wrap:wrap;gap:6px}.chk label{display:flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:14px;background:var(--panel)}
+.tblw{overflow-x:auto}.tbl.prev{font-size:12px}.tbl.prev td,.tbl.prev th{white-space:nowrap;padding:4px 8px}
+th.kcod,.kcod{background:#e8f1ff;color:#123a73}th.kser,.kser{background:#e3f5ec;color:#0a5a36}th.kdes,.kdes{background:#fff4df;color:#7a4b00}
+.narrow{max-width:760px}
+.cinv .err{margin:8px 0}
+.apane .chips.fch{margin:0}.apane .chips.fch button{flex:none;padding:6px 14px;min-height:0}

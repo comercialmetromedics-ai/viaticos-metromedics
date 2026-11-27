@@ -4,6 +4,9 @@ import { configurado, sb } from './lib/sb'
 import Login, { NuevaClave } from './Login'
 import TecApp from './tec/TecApp'
 import AdminApp from './admin/AdminApp'
+import EviTec from './evi/EviTec'
+import EviAdmin from './evi/EviAdmin'
+import type { Modulo } from './ui'
 
 export default function App() {
   const { session, yo, cargando, recargar } = useApp()
@@ -13,6 +16,8 @@ export default function App() {
     const { data } = sb.auth.onAuthStateChange(e => { if (e === 'PASSWORD_RECOVERY') setRecuperar(true) })
     return () => data.subscription.unsubscribe()
   }, [])
+  const [modulo, setModulo] = useState<Modulo>(() => (localStorage.getItem('modulo') as Modulo) || 'via')
+  const cambiarMod = (m: Modulo) => { try { localStorage.setItem('modulo', m) } catch { /* sin almacenamiento */ } setModulo(m) }
   const cambiar = (m: 'admin' | 'tec') => { try { localStorage.setItem('modo', m) } catch { /* sin almacenamiento */ } setModo(m) }
 
   if (!configurado) return (
@@ -31,6 +36,9 @@ export default function App() {
       <div className="links"><button onClick={() => sb.auth.signOut()}>Salir</button></div>
     </div></main>
   )
-  if (yo.rol === 'admin' && modo === 'admin') return <AdminApp onTec={() => cambiar('tec')} />
-  return <TecApp onAdmin={yo.rol === 'admin' ? () => cambiar('admin') : undefined} />
+  const admin = yo.rol === 'admin' && modo === 'admin'
+  const onAdmin = yo.rol === 'admin' ? () => cambiar('admin') : undefined
+  if (modulo === 'evi') return admin ? <EviAdmin key="ea" onTec={() => cambiar('tec')} onModulo={cambiarMod} /> : <EviTec key="et" onAdmin={onAdmin} onModulo={cambiarMod} />
+  if (admin) return <AdminApp key="va" onTec={() => cambiar('tec')} onModulo={cambiarMod} />
+  return <TecApp key="vt" onAdmin={onAdmin} onModulo={cambiarMod} />
 }

@@ -4,7 +4,8 @@ import { msgError, sb } from '../lib/sb'
 import { subirSoporte } from '../lib/img'
 import type { Consignacion, Legalizacion, Reporte, Saldo, Traspaso } from '../lib/types'
 import { codigo, textoResultado, disponible, normOrden, numBase, ORDEN_OK, durTxt, fdate, fhora, fmt, limiteDe, miles, neto, num, recibido, retencionEsperada, sumaDias, fdia, topeDe, ymd } from '../lib/util'
-import { Archivo, Chip, Comparacion, Subir, Tag, Vacio } from '../ui'
+import { Modulos,  Archivo, Chip, Comparacion, Subir, Tag, Vacio } from '../ui'
+import type { Modulo } from '../ui'
 
 type Pantalla = 'home' | 'orden' | 'nueva' | 'form' | 'ok' | 'mis' | 'nov' | 'noresp'
 interface Borrador {
@@ -33,7 +34,7 @@ function usePantalla() {
   return [p, ir] as const
 }
 
-export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
+export default function TecApp({ onAdmin, onModulo }: { onAdmin?: () => void; onModulo: (m: Modulo) => void }) {
   const app = useApp()
   const { yo, config, ordenes, conceptos, topes, toast } = app
   const uid = yo!.id
@@ -130,7 +131,7 @@ export default function TecApp({ onAdmin }: { onAdmin?: () => void }) {
   return (
     <div className="tec">
       <header className="pbar">
-        <div><b>Viáticos</b><small>{yo!.nombre}</small></div>
+        <div><Modulos actual="via" onCambio={onModulo} /><small>{yo!.nombre}</small></div>
         <div className="pbar-r">
           {onAdmin && <button className="btn sm" onClick={onAdmin}>Panel admin</button>}
           <button className="bell" onClick={() => ir('nov')} aria-label={`Novedades: ${nNov}`}>⚑{nNov > 0 && <i>{nNov}</i>}</button>

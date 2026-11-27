@@ -33,3 +33,16 @@ export interface Legalizacion {
   desde: string | null; hasta: string | null; fecha: string; medio: string | null; nota: string | null
   comprobante_path: string | null; creado_por: string | null; created_at: string
 }
+
+// ---------- Evidencias de calibración ----------
+export interface Inventario {
+  orden: string; archivo_path: string; nombre_archivo: string | null; hoja: string; fila_encabezado: number
+  col_codigos: number[]; col_serie: number | null; col_desc: number[]; ultima_col: number; encabezados: string[]
+  cargado_por: string; cargado_at: string
+}
+export interface Equipo {
+  id: number; orden: string; fila: number | null; codigo: string | null; codigos: string[]; serie: string | null; descripcion: string | null
+  datos: string[]; agregado_por: string | null; agregado_at: string | null
+  foto_equipo: string | null; foto_sticker: string | null; nota: string | null; evidencia_por: string | null; evidencia_at: string | null
+}
+export interface Avance { orden: string; total: number; con_evidencia: number; agregados: number; ultima: string | null }

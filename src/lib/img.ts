@@ -17,13 +17,14 @@ async function comprimir(file: File): Promise<Blob> {
 export const MAX_MB = 8
 
 /** Sube un soporte a la carpeta del usuario y devuelve la ruta guardada */
-export async function subirSoporte(uid: string, file: File): Promise<string> {
+export async function subirSoporte(uid: string, file: File, carpeta?: 'evi' | 'inv'): Promise<string> {
   if (file.size > MAX_MB * 1024 * 1024 && !file.type.startsWith('image/')) throw new Error(`El archivo supera ${MAX_MB} MB.`)
   const blob = await comprimir(file)
   const esPdf = file.type === 'application/pdf'
-  const ext = esPdf ? 'pdf' : blob.type === 'image/jpeg' ? 'jpg' : (file.name.split('.').pop() || 'jpg').toLowerCase()
-  const path = `${uid}/${crypto.randomUUID()}.${ext}`
-  const { error } = await sb.storage.from('soportes').upload(path, blob, { contentType: esPdf ? 'application/pdf' : blob.type || file.type, upsert: false })
+  const esXlsx = /\.xlsx$/i.test(file.name)
+  const ext = esPdf ? 'pdf' : esXlsx ? 'xlsx' : blob.type === 'image/jpeg' ? 'jpg' : (file.name.split('.').pop() || 'jpg').toLowerCase()
+  const path = `${uid}/${carpeta ? carpeta + '/' : ''}${crypto.randomUUID()}.${ext}`
+  const { error } = await sb.storage.from('soportes').upload(path, blob, { contentType: esPdf ? 'application/pdf' : esXlsx ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : blob.type || file.type, upsert: false })
   if (error) throw error
   return path
 }
@@ -37,3 +38,10 @@ export async function urlFirmada(path: string): Promise<string | null> {
   return data?.signedUrl ?? null
 }
 export const esPdf = (p: string) => p.toLowerCase().endsWith('.pdf')
+
+/** Descarga un archivo del almacenamiento como Blob */
+export async function descargarArchivo(path: string): Promise<Blob> {
+  const { data, error } = await sb.storage.from('soportes').download(path)
+  if (error || !data) throw error || new Error('No se pudo descargar el archivo.')
+  return data
+}

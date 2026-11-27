@@ -70,3 +70,12 @@ export function Subir({ label, onFile }: { label: string; onFile: (f: File) => v
     </label>
   )
 }
+
+export type Modulo = 'via' | 'evi'
+/** Cambia entre los módulos de la app */
+export function Modulos({ actual, onCambio }: { actual: Modulo; onCambio: (m: Modulo) => void }) {
+  return <div className="mods" role="tablist" aria-label="Módulo">
+    {([['via', 'Viáticos'], ['evi', 'Evidencias']] as const).map(([k, l]) =>
+      <button key={k} role="tab" aria-selected={actual === k} onClick={() => actual !== k && onCambio(k)}>{l}</button>)}
+  </div>
+}
